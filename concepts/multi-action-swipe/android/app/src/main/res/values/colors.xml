@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="row_bg">#FFFFFF</color>
+    <color name="row_pinned_bg">#F2F4F7</color>
+    <color name="row_pressed">#1A000000</color>
+    <color name="divider">#E3E6EA</color>
+    <color name="text_primary">#14181F</color>
+    <color name="text_secondary">#6B7480</color>
+    <color name="accent">#2F80D1</color>
+    <color name="badge_muted">#A3AAB4</color>
+    <color name="panel_bg">#F6F7F9</color>
+    <color name="undo_bg">#2A3038</color>
+    <color name="undo_text">#FFFFFF</color>
+    <color name="undo_action">#7CC0FF</color>
+
+    <color name="action_pin">#E59A1D</color>
+    <color name="action_read">#2F80D1</color>
+    <color name="action_mute">#7B8794</color>
+    <color name="action_favorite">#D9A400</color>
+    <color name="action_archive">#2E9E6B</color>
+    <color name="action_delete">#D6453D</color>
+    <color name="action_delete_armed">#A8241D</color>
+</resources>
