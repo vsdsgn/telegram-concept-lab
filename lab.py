@@ -121,7 +121,7 @@ def worker(slug, platform, agent, instruction):
     job = jobs[slug]["platforms"][platform]
     cwd = Path(job["worktree"])
     if agent == "codex":
-        cmd = ["codex", "exec", "-C", str(cwd), "--approve-for-me", instruction]
+        cmd = ["codex", "exec", "-C", str(cwd), "-m", "gpt-5.6-sol", "--approve-for-me", instruction]
     else:
         cmd = ["claude", "-p", "--model", "sonnet", "--permission-mode", "auto",
                "--settings", '{"env":{"ANTHROPIC_BASE_URL":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY":"false"}}', instruction]
