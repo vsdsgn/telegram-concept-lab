@@ -18,11 +18,11 @@ object SwipeConfig {
         private set
 
     private val defaultOrder = mapOf(
-        Side.LEADING to listOf(SwipeAction.READ, SwipeAction.PIN, SwipeAction.MUTE, SwipeAction.ARCHIVE, SwipeAction.DELETE),
-        Side.TRAILING to listOf(SwipeAction.ARCHIVE, SwipeAction.MUTE, SwipeAction.DELETE, SwipeAction.PIN, SwipeAction.READ),
+        Side.LEADING to listOf(SwipeAction.READ, SwipeAction.PIN, SwipeAction.FAVORITE, SwipeAction.MUTE, SwipeAction.ARCHIVE, SwipeAction.DELETE),
+        Side.TRAILING to listOf(SwipeAction.ARCHIVE, SwipeAction.MUTE, SwipeAction.DELETE, SwipeAction.PIN, SwipeAction.READ, SwipeAction.FAVORITE),
     )
     private val defaultEnabled = mapOf(
-        Side.LEADING to setOf(SwipeAction.READ, SwipeAction.PIN),
+        Side.LEADING to setOf(SwipeAction.READ, SwipeAction.PIN, SwipeAction.FAVORITE),
         Side.TRAILING to setOf(SwipeAction.ARCHIVE, SwipeAction.MUTE, SwipeAction.DELETE),
     )
 

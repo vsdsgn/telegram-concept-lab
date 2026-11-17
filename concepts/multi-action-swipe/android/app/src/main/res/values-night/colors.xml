@@ -16,6 +16,7 @@
     <color name="action_pin">#C98414</color>
     <color name="action_read">#2468AB</color>
     <color name="action_mute">#5F6B78</color>
+    <color name="action_favorite">#C79400</color>
     <color name="action_archive">#23805A</color>
     <color name="action_delete">#B93A33</color>
     <color name="action_delete_armed">#8E1F19</color>

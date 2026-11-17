@@ -10,6 +10,7 @@ data class Chat(
     val markedUnread: Boolean = false,
     val pinned: Boolean = false,
     val muted: Boolean = false,
+    val favorite: Boolean = false,
     val archived: Boolean = false,
     val deleted: Boolean = false,
 ) {

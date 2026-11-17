@@ -23,13 +23,18 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. Android Studio can open this f
 
 ## What to try (demo script)
 
-1. **Swipe left** on a row: Delete / Mute / Archive appear and share the revealed width. Release past ~50% of their width → row springs open; tap a button.
-2. **Keep going left** past ~70% of the screen: the primary action (Archive, outermost) expands to fill the row, with a threshold haptic; release → row flies off and the chat is archived; an **Undo** bar appears.
-3. **Swipe right**: Read/Unread and Pin. Full swipe = Read/Unread (row springs back, badge changes).
-4. **Delete** is two-step: first tap turns the button dark red ("Confirm?"), second tap deletes (mock) with Undo. Delete is never a full-swipe action.
-5. Change your mind mid-gesture: drag back below the threshold (haptic + primary shrinks back), lift early (springs closed), or **catch a row while it is still moving**.
+0. **Try demo** (coach card on first run, then the persistent "Replay demo" button in the header): opens the first row's real action tray with no touch gesture — left tray, then right tray — and closes it. It never executes an action; touching the screen cancels it, and tapping a button of a demo-opened tray only closes it. The coach card ("Swipe left for actions", with a graphic of the tray) is dismissible; Settings stays visible.
+1. **Swipe left** on a row: Archive / Mute / Delete appear (Archive outermost = primary) and share the revealed width. Release past ~50% of their width → row springs open; tap a button.
+2. **Keep going left** past ~70% of the screen: Archive expands to fill the row, with a threshold haptic; release → row flies off and the chat is archived; an **Undo** bar appears.
+3. **Swipe right**: Read/Unread, Pin/Unpin, Favorite. Full swipe = Read/Unread (row springs back, badge changes).
+4. **Delete** is two-step: first tap turns the button dark red ("Confirm?"), second tap deletes (mock) with Undo. Delete is never a full-swipe action. From the long-press menu / TalkBack actions it asks for confirmation in a dialog.
+5. Change your mind mid-gesture: drag back below the threshold, lift early (springs closed), or **catch a row while it is still moving**.
 6. **Long-press** a row: menu with every enabled action (non-gesture alternative).
-7. Tune icon (top right) → **Swipe settings**: tick up to 3 actions per side, reorder with ↑/↓ (first = primary/outer), toggle haptics, restore mock chats.
+7. Tune icon → **Swipe settings**: tick up to 3 actions per side, reorder with ↑/↓, toggle haptics, restore mock chats.
+
+## Shared fixtures (parity with iOS)
+
+Same six mock chats in the same order: Maya Chen (pinned, 2 unread), Product Sync (muted, 3), Weekend Plans (8), Design Critique (favorite, 5), Ava Thompson (read), Build Alerts (muted, 12). Previews/times copied from the iOS fixtures where they exist (Product Sync's text and Build Alerts' "emulator" wording are Android-side choices; the shared state is not otherwise defined in the spec, so compare it with the iOS branch).
 
 ## Gesture states
 
@@ -56,23 +61,19 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. Android Studio can open this f
 - Light/dark colour resources (`values` / `values-night`). Touch targets ≥ 48 dp. Undo bar is a polite live region.
 - Haptics respect both the in-app switch and the system "touch feedback" setting.
 
-## Verification (what was actually run)
+## Verification (what was actually run — UX v2, 2026-11-17)
 
-Machine: macOS, Android SDK platform 36 / build-tools 36.1, JDK 17.0.20 (Temurin, from the Gradle JDK cache), Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20.
+Machine: macOS, JDK 17.0.20 (Gradle JDK cache), Gradle 8.14, Android SDK platform 36, arm64 emulator (Android 16, API 36, 1080×2400, already running as `emulator-5554`).
 
 | Command | Result |
 |---|---|
-| `./gradlew assembleDebug testDebugUnitTest` | **BUILD SUCCESSFUL**; 6/6 unit tests pass (`SwipeLogicTest`: rubber band, resistance, release decisions, hysteresis, thresholds) |
-| `./gradlew installDebug` + launch on an arm64 emulator (Android 16, API 36.1, Google APIs, 1080×2400) | Installs and runs, no crash in logcat |
+| `./gradlew assembleDebug testDebugUnitTest --offline` | succeeded; APK built; `SwipeLogicTest` 6 tests, 0 failures (read from the JUnit XML) |
+| `adb install -r app-debug.apk`; `pm clear`; `am start -n lab.telegramconcept.multiswipe/.MainActivity` | installed and launched, no crash in logcat (`AndroidRuntime:E` empty) |
+| `adb shell input tap` on **Try demo** (a tap, no swipe) | real tray opened; screenshots in `docs/` |
 
-Exercised on the emulator with `adb shell input` (screenshots in `docs/`):
-- trailing and leading reveal in dark mode (`docs/01-…`, `docs/02-…`), and light mode during development;
-- full swipe → archive → Undo bar (`docs/03-…`);
-- two-step Delete arming ("Confirm?"), long-press actions menu, tap-to-open stub.
+Screenshots (`docs/`): `v2-first-run-coach.png` (fresh install: compact header, mock label, coach card, six fixtures), `v2-try-demo-tray-trailing.png` (Delete / Mute / Archive tray open), `v2-try-demo-tray-leading.png` (Read / Unpin / Favorite tray open, row partly off-screen). Older v1 screenshots were removed because they showed the previous fixtures.
 
-**Not verified:** haptics (emulators don't vibrate — feel on a real device), TalkBack, "Remove animations", large font scale, Settings screen beyond a successful build, RTL, tablets/landscape, 60 fps measurement (the software-rendered emulator is not representative). Spring timing/feel was judged only from static screenshots.
-
-A bug found during emulator testing and fixed: a fast fling could be decided on a stale offset because batched `MOVE` events were not yet applied at `ACTION_UP`; `ChatRowView` now applies the final position before deciding.
+**Not verified:** swipe gesture parity on the v2 build was not re-run by `adb input swipe` (v1 gesture paths are unchanged but the row code gained Favorite, a star marker and the demo flag); full-swipe/Undo/two-step Delete were not re-exercised on v2; the delete confirmation dialog for the menu/TalkBack path was not opened; Settings screen with Favorite beyond a successful build; haptics, TalkBack, Reduce Motion, large font, RTL, landscape/tablet, 60 fps, dark mode of the new header and coach card (screenshots are light theme only); persistence of coach dismissal; behaviour parity with iOS was compared by reading its fixtures only, no iOS build was run. The emulator was very slow (first launch ~33 s), so demo timings (tray held ~3 s each) were tuned for that and are not representative.
 
 ### Recording a short demo
 ```bash
@@ -87,7 +88,7 @@ adb pull /sdcard/demo.mp4
 - Starting a right swipe at the very left screen edge may trigger the system back gesture (no gesture-exclusion rects set).
 - Icons are simple vector drawables made for this demo (the pin/check/tune glyphs follow common Material shapes); the app has no custom launcher icon.
 - Archive/Delete only hide the row (Undo restores it); nothing is persisted.
-- Delete button label `Confirm?` and other strings are English only.
+- Tray order: Archive is outermost (primary) on the left swipe, so visually it reads Delete · Mute · Archive from the inside out. Delete button label `Confirm?` and other strings are English only.
 - On a loaded emulator the first launch can show a "System UI isn't responding" dialog unrelated to the app.
 
 ## Layout

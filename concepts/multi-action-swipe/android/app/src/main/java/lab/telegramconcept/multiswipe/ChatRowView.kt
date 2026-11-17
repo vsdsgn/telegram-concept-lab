@@ -43,6 +43,8 @@ class ChatRowView(context: Context) : View(context) {
         fun onAction(chat: Chat, action: SwipeAction)
         fun onOpenChat(chat: Chat)
         fun onLongPress(chat: Chat)
+        /** Non-gesture path (TalkBack custom action): the host decides whether to confirm destructive actions. */
+        fun onAlternativeAction(chat: Chat, action: SwipeAction)
     }
 
     var listener: Listener? = null
@@ -161,6 +163,10 @@ class ChatRowView(context: Context) : View(context) {
         ContextCompat.getDrawable(context, R.drawable.ic_pin)!!.mutate().also { it.setTint(cSecondary) }
     }
 
+    private val starIcon: Drawable by lazy {
+        ContextCompat.getDrawable(context, R.drawable.ic_star)!!.mutate().also { it.setTint(ContextCompat.getColor(context, R.color.action_favorite)) }
+    }
+
     private var titleText = ""
     private var previewText = ""
     private val tmpRect = RectF()
@@ -184,6 +190,7 @@ class ChatRowView(context: Context) : View(context) {
 
     /** Immediately return to rest with no animation (used on recycle/detach). */
     fun reset() {
+        demoOpen = false
         offsetAnim.cancel()
         expandAnim.cancel()
         removeCallbacks(longPressRunnable)
@@ -209,7 +216,7 @@ class ChatRowView(context: Context) : View(context) {
             return
         }
         val textStart = textStart()
-        val timeW = timePaint.measureText(c.time)
+        val timeW = timePaint.measureText(c.time) + if (c.favorite) dp(18f) else 0f
         titleText = TextUtils.ellipsize(c.name, titlePaint, width - textStart - dp(16f) - timeW - dp(8f), TextUtils.TruncateAt.END).toString()
         previewText = TextUtils.ellipsize(c.preview, previewPaint, width - textStart - dp(16f) - trailingBadgeWidth(c), TextUtils.TruncateAt.END).toString()
     }
@@ -238,6 +245,7 @@ class ChatRowView(context: Context) : View(context) {
         val parts = mutableListOf(c.name, c.preview, c.time)
         if (c.unread > 0) parts += "${c.unread} unread" else if (c.markedUnread) parts += "marked unread"
         if (c.pinned) parts += "pinned"
+        if (c.favorite) parts += "favorite"
         if (c.muted) parts += "muted"
         contentDescription = parts.joinToString(", ")
         for (id in a11yIds) ViewCompat.removeAccessibilityAction(this, id)
@@ -246,7 +254,7 @@ class ChatRowView(context: Context) : View(context) {
         for (a in all) {
             a11yIds += ViewCompat.addAccessibilityAction(this, a.label(context, c)) { _, _ ->
                 Haptics.confirm(this)
-                listener?.onAction(c, a)
+                listener?.onAlternativeAction(c, a)
                 true
             }
         }
@@ -312,6 +320,13 @@ class ChatRowView(context: Context) : View(context) {
         timePaint.color = if (c.showUnread && !c.muted) cAccent else cSecondary
         timePaint.textAlign = Paint.Align.RIGHT
         canvas.drawText(c.time, w - dp(16f), titleBase, timePaint)
+        if (c.favorite) {
+            val s = dp(14f).toInt()
+            val right = (w - dp(16f) - timePaint.measureText(c.time) - dp(4f)).toInt()
+            val mid = (titleBase + (timePaint.ascent() + timePaint.descent()) / 2f).toInt()
+            starIcon.setBounds(right - s, mid - s / 2, right, mid + s / 2)
+            starIcon.draw(canvas)
+        }
 
         // unread badge / pin marker on the preview line
         val label = badgeLabel(c)
@@ -522,6 +537,7 @@ class ChatRowView(context: Context) : View(context) {
     }
 
     private fun beginDrag(x: Float) {
+        demoOpen = false
         dragging = true
         dragStartX = x
         dragStartOffset = offset
@@ -634,7 +650,24 @@ class ChatRowView(context: Context) : View(context) {
         }
     }
 
+    /** True while the tray was opened by the tutorial; taps then only close it and never run an action. */
+    var demoOpen = false
+        private set
+
+    /** Tutorial: spring the row open to reveal the real action tray on [side]. No action is executed. */
+    fun demoOpen(side: Side) {
+        if (SwipeConfig.visible(side).isEmpty() || dragging) return
+        demoOpen = true
+        restOffset = if (side == Side.LEADING) openWidth(side) else -openWidth(side)
+        springOffset(restOffset, 0f, stiffness = 520f, damping = 0.72f, onEnd = { listener?.onSettledOpen(this) })
+        Haptics.tick(this)
+    }
+
     private fun handleTap(chat: Chat, x: Float) {
+        if (demoOpen && abs(offset) > 1f) {
+            closeAnimated()
+            return
+        }
         if (abs(offset) > 1f) {
             val i = buttonAt(x)
             val actions = SwipeConfig.visible(sideOf(offset))
@@ -669,6 +702,7 @@ class ChatRowView(context: Context) : View(context) {
 
     /** Close (used by the host when another row opens or the list scrolls). */
     fun closeAnimated() {
+        demoOpen = false
         if (offset == 0f && !offsetAnim.isRunning) return
         restOffset = 0f
         committing = false

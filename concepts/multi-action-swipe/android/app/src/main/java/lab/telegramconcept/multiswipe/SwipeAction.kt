@@ -19,6 +19,7 @@ enum class SwipeAction(
 ) {
     PIN("pin", R.string.pool_pin, R.color.action_pin),
     READ("read", R.string.pool_read, R.color.action_read),
+    FAVORITE("favorite", R.string.pool_favorite, R.color.action_favorite),
     MUTE("mute", R.string.pool_mute, R.color.action_mute),
     ARCHIVE("archive", R.string.pool_archive, R.color.action_archive, removesRow = true),
     DELETE("delete", R.string.pool_delete, R.color.action_delete, destructive = true, removesRow = true);
@@ -27,6 +28,7 @@ enum class SwipeAction(
     fun labelRes(chat: Chat): Int = when (this) {
         PIN -> if (chat.pinned) R.string.action_unpin else R.string.action_pin
         READ -> if (chat.showUnread) R.string.action_read else R.string.action_unread
+        FAVORITE -> if (chat.favorite) R.string.action_unfavorite else R.string.action_favorite
         MUTE -> if (chat.muted) R.string.action_unmute else R.string.action_mute
         ARCHIVE -> R.string.action_archive
         DELETE -> R.string.action_delete
@@ -38,6 +40,7 @@ enum class SwipeAction(
     fun iconRes(chat: Chat): Int = when (this) {
         PIN -> R.drawable.ic_pin
         READ -> if (chat.showUnread) R.drawable.ic_read else R.drawable.ic_unread
+        FAVORITE -> R.drawable.ic_star
         MUTE -> if (chat.muted) R.drawable.ic_unmute else R.drawable.ic_mute
         ARCHIVE -> R.drawable.ic_archive
         DELETE -> R.drawable.ic_delete
