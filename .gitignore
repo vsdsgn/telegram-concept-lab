@@ -1,0 +1,14 @@
+.DS_Store
+.lab/
+.env
+.env.*
+!.env.example
+**/.gradle/
+**/build/
+**/DerivedData/
+**/.idea/
+**/local.properties
+**/*.xcuserstate
+**/xcuserdata/
+**/.swiftpm/
+node_modules/
