@@ -121,13 +121,17 @@ def worker(slug, platform, agent, instruction):
     job = jobs[slug]["platforms"][platform]
     cwd = Path(job["worktree"])
     if agent == "codex":
-        cmd = ["codex", "exec", "-C", str(cwd), "-s", "workspace-write",
-               "--approve-for-me", instruction]
+        cmd = ["codex", "exec", "-C", str(cwd), "--approve-for-me", instruction]
     else:
-        cmd = ["claude", "-p", "--permission-mode", "acceptEdits", instruction]
+        cmd = ["claude", "-p", "--model", "sonnet", "--permission-mode", "auto",
+               "--settings", '{"env":{"ANTHROPIC_BASE_URL":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY":"false"}}', instruction]
+    env = os.environ.copy()
+    if agent == "claude":
+        for key in ("ANTHROPIC_AUTH_TOKEN", "AI_GATEWAY_API_KEY"):
+            env.pop(key, None)
     print(f"Starting {agent} for {platform}", flush=True)
     try:
-        outcome = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, timeout=3600)
+        outcome = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, env=env, timeout=3600)
         code = outcome.returncode
     except subprocess.TimeoutExpired:
         code = 124
@@ -180,6 +184,44 @@ def prs(slug):
                  cwd=worktree, check=False)
         print(platform, (pr.stdout or pr.stderr).strip())
 
+
+def retry(slug):
+    slug = valid_slug(slug)
+    jobs = registry()
+    if slug not in jobs:
+        raise SystemExit("Concept does not exist.")
+    spec = (CONCEPTS / slug / "SPEC.md").read_text()
+    prompt = spec.split("## User prompt", 1)[-1].split("## Shared behavior contract", 1)[0].strip()
+    for platform, job in jobs[slug]["platforms"].items():
+        marker = STATE / "logs" / slug / f"{platform}.exit"
+        if not marker.exists():
+            print(platform, "not marked finished; skip to avoid duplicate")
+            continue
+        if marker.read_text().strip() == "0":
+            print(platform, "already successful; skip")
+            continue
+        marker.unlink()
+        log = Path(job["log"])
+        log.write_text("")
+        instruction = (
+            f"Implement the {platform.upper()} part of concept '{slug}'. "
+            f"Read AGENTS.md, DESIGN.md and concepts/{slug}/SPEC.md first. "
+            f"Work only under concepts/{slug}/{platform}/ in your worktree. "
+            "Create a standalone runnable native app and README. Verify build using Xcode Simulator "
+            "or Android Studio/SDK. No external publishing, pushing or merging. "
+            "Use mock data and label it. Make a git commit of your implementation. "
+            f"Original product request: {prompt}"
+        )
+        with log.open("a") as f:
+            p = subprocess.Popen(
+                [sys.executable, str(ROOT / "lab.py"), "worker", slug, platform, job["agent"], instruction],
+                cwd=ROOT, stdout=f, stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL, start_new_session=True
+            )
+        job["pid"] = p.pid
+        save(jobs)
+        print(platform, "restarted", "pid=", p.pid)
+
 def main():
     ap = argparse.ArgumentParser()
     s = ap.add_subparsers(dest="command", required=True)
@@ -189,6 +231,8 @@ def main():
     n.add_argument("prompt")
     n.add_argument("--swap", action="store_true")
     s.add_parser("status")
+    reparse = s.add_parser("retry")
+    reparse.add_argument("slug")
     l = s.add_parser("logs")
     l.add_argument("slug")
     l.add_argument("platform", choices=["ios", "android"])
@@ -206,6 +250,8 @@ def main():
         new(args.slug, args.prompt, args.swap)
     elif args.command == "status":
         status()
+    elif args.command == "retry":
+        retry(args.slug)
     elif args.command == "logs":
         logs(args.slug, args.platform)
     elif args.command == "prs":
