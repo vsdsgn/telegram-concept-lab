@@ -11,3 +11,5 @@ No invented backend features. Stub data must be openly labeled. Don't copy Teleg
 Support cancel/interrupt interactions, haptics where sensible, accessibility and reduced motion.
 Report exact verification commands and results; never claim unexecuted builds passed.
 Do not install paid tooling, push to stores, merge PRs, or change other repositories.
+
+Official Telegram source trees for read-only reference: ~/Projects/telegram-upstreams/Telegram-iOS and ~/Projects/telegram-upstreams/Telegram-Android. Do not edit them directly or copy their entire contents into this public repository. Integrate via isolated upstream forks/worktrees and documented patches; follow Telegram license and developer branding rules.
