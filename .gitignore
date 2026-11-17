@@ -12,3 +12,6 @@
 **/xcuserdata/
 **/.swiftpm/
 node_modules/
+
+__pycache__/
+*.pyc
