@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Multi-Action Swipe</string>
+    <string name="header_title">Chats</string>
+    <string name="header_mock_label">MOCK DATA · standalone concept, not connected to Telegram</string>
+    <string name="header_hint">Swipe a row left or right. Long-press for the actions menu.</string>
+    <string name="settings_title">Swipe settings</string>
+    <string name="settings_button">Configure swipe actions</string>
+    <string name="back">Back</string>
+
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_read">Read</string>
+    <string name="action_unread">Unread</string>
+    <string name="action_mute">Mute</string>
+    <string name="action_unmute">Unmute</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm_delete">Confirm?</string>
+
+    <string name="pool_pin">Pin / Unpin</string>
+    <string name="pool_read">Read / Unread</string>
+    <string name="pool_mute">Mute / Unmute</string>
+    <string name="pool_archive">Archive</string>
+    <string name="pool_delete">Delete (destructive)</string>
+
+    <string name="undo">Undo</string>
+    <string name="done_pinned">Pinned %1$s</string>
+    <string name="done_unpinned">Unpinned %1$s</string>
+    <string name="done_read">Marked %1$s as read</string>
+    <string name="done_unread">Marked %1$s as unread</string>
+    <string name="done_muted">Muted %1$s</string>
+    <string name="done_unmuted">Unmuted %1$s</string>
+    <string name="done_archived">Archived %1$s</string>
+    <string name="done_deleted">Deleted %1$s (mock)</string>
+    <string name="open_chat_stub">Open chat “%1$s” (stub: no conversation screen in this concept)</string>
+    <string name="actions_menu_title">Actions for %1$s</string>
+
+    <string name="side_leading">Swipe right reveals</string>
+    <string name="side_trailing">Swipe left reveals</string>
+    <string name="side_help">Tick up to %1$d actions. Order runs from the screen edge inward; the first one is the primary action. A full swipe triggers the primary action unless it is destructive.</string>
+    <string name="full_swipe_is">Full swipe: %1$s</string>
+    <string name="full_swipe_none">Full swipe: disabled (no actions, or primary is destructive)</string>
+    <string name="move_up">Move %1$s up</string>
+    <string name="move_down">Move %1$s down</string>
+    <string name="max_actions">At most %1$d actions per side</string>
+    <string name="haptics">Haptic feedback</string>
+    <string name="haptics_help">Uses the system haptics. Emulators usually don’t vibrate.</string>
+    <string name="restore_mock">Restore mock chats</string>
+    <string name="restore_done">Mock chats restored</string>
+</resources>
