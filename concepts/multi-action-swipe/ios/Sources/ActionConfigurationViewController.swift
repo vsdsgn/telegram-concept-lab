@@ -63,7 +63,7 @@ final class ActionConfigurationViewController: UIViewController {
         ])
 
         let intro = UILabel()
-        intro.text = "Choose the three actions revealed on each side. Changes are stored on this device for the next launch."
+        intro.text = "Reorder the three parity actions on each side. Changes are stored on this device for the next launch."
         intro.font = .preferredFont(forTextStyle: .body)
         intro.adjustsFontForContentSizeCategory = true
         intro.textColor = Palette.secondaryText
@@ -145,7 +145,7 @@ final class ActionConfigurationViewController: UIViewController {
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
         button.configuration = configuration
         button.accessibilityLabel = "Slot \(index + 1), \(selected.title)"
-        button.menu = UIMenu(title: "Choose action", children: ChatAction.allCases.map { action in
+        button.menu = UIMenu(title: "Choose action for this slot", children: ActionConfiguration.allowedActions(for: side).map { action in
             UIAction(
                 title: action.title,
                 image: UIImage(systemName: action.symbolName),

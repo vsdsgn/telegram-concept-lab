@@ -13,7 +13,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = UIWindow(windowScene: windowScene)
         let chats = ChatListViewController()
         let navigation = UINavigationController(rootViewController: chats)
-        navigation.navigationBar.prefersLargeTitles = true
+        navigation.navigationBar.prefersLargeTitles = false
         navigation.navigationBar.tintColor = Palette.accent
         window.rootViewController = navigation
         window.makeKeyAndVisible()

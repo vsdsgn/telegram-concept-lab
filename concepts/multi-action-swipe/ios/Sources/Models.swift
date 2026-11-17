@@ -57,6 +57,26 @@ enum ChatAction: String, CaseIterable, Codable, Hashable {
     }
 
     var isDestructive: Bool { self == .delete }
+
+    func title(for chat: ChatPreview) -> String {
+        switch self {
+        case .read: chat.unreadCount > 0 ? "Mark read" : "Mark unread"
+        case .pin: chat.isPinned ? "Unpin" : "Pin"
+        case .mute: chat.isMuted ? "Unmute" : "Mute"
+        case .favorite: chat.isFavorite ? "Remove favorite" : "Favorite"
+        case .archive, .delete: title
+        }
+    }
+
+    func shortTitle(for chat: ChatPreview) -> String {
+        switch self {
+        case .read: chat.unreadCount > 0 ? "Read" : "Unread"
+        case .pin: chat.isPinned ? "Unpin" : "Pin"
+        case .mute: chat.isMuted ? "Unmute" : "Mute"
+        case .favorite: chat.isFavorite ? "Unfavorite" : "Favorite"
+        case .archive, .delete: shortTitle
+        }
+    }
 }
 
 struct ActionConfiguration: Codable, Equatable {
@@ -72,12 +92,18 @@ struct ActionConfiguration: Codable, Equatable {
         side == .leading ? leading : trailing
     }
 
+    static func allowedActions(for side: SwipeSide) -> [ChatAction] {
+        defaults.actions(for: side)
+    }
+
     mutating func set(_ action: ChatAction, side: SwipeSide, index: Int) {
         guard (0..<3).contains(index) else { return }
         if side == .leading {
-            leading[index] = action
+            guard let oldIndex = leading.firstIndex(of: action) else { return }
+            leading.swapAt(index, oldIndex)
         } else {
-            trailing[index] = action
+            guard let oldIndex = trailing.firstIndex(of: action) else { return }
+            trailing.swapAt(index, oldIndex)
         }
     }
 }
@@ -89,8 +115,8 @@ enum ActionConfigurationStore {
         guard
             let data = UserDefaults.standard.data(forKey: key),
             let value = try? JSONDecoder().decode(ActionConfiguration.self, from: data),
-            value.leading.count == 3,
-            value.trailing.count == 3
+            Set(value.leading) == Set(ActionConfiguration.allowedActions(for: .leading)),
+            Set(value.trailing) == Set(ActionConfiguration.allowedActions(for: .trailing))
         else {
             return .defaults
         }
@@ -117,12 +143,10 @@ struct ChatPreview: Identifiable, Equatable {
 
     static let mock: [ChatPreview] = [
         ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000001")!, name: "Maya Chen", message: "The interaction prototype is ready to review.", time: "10:42", unreadCount: 2, isPinned: true, isMuted: false, isFavorite: false, initials: "MC", avatarColor: Palette.blue),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!, name: "Design Critique", message: "Jon: I like the third spring option best.", time: "09:18", unreadCount: 5, isPinned: false, isMuted: false, isFavorite: true, initials: "DC", avatarColor: Palette.indigo),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000003")!, name: "Noah Williams", message: "Can we test the action order on a smaller phone?", time: "Yesterday", unreadCount: 0, isPinned: false, isMuted: true, isFavorite: false, initials: "NW", avatarColor: Palette.orange),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000004")!, name: "Weekend Plans", message: "Priya: Train leaves at 08:15.", time: "Yesterday", unreadCount: 8, isPinned: false, isMuted: false, isFavorite: false, initials: "WP", avatarColor: Palette.gold),
+        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!, name: "Product Sync", message: "Noor: Let’s move the review to Thursday.", time: "10:18", unreadCount: 12, isPinned: false, isMuted: true, isFavorite: false, initials: "PS", avatarColor: Palette.orange),
+        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000003")!, name: "Weekend Plans", message: "Priya: Train leaves at 08:15.", time: "09:47", unreadCount: 0, isPinned: false, isMuted: false, isFavorite: false, initials: "WP", avatarColor: Palette.gold),
+        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000004")!, name: "Design Critique", message: "Jon: I like the third spring option best.", time: "Yesterday", unreadCount: 5, isPinned: false, isMuted: false, isFavorite: true, initials: "DC", avatarColor: Palette.indigo),
         ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000005")!, name: "Ava Thompson", message: "Sent a photo", time: "Mon", unreadCount: 0, isPinned: false, isMuted: false, isFavorite: false, initials: "AT", avatarColor: Palette.mint),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000006")!, name: "iOS Builders", message: "Release build is green on the simulator.", time: "Sun", unreadCount: 12, isPinned: false, isMuted: true, isFavorite: false, initials: "IB", avatarColor: Palette.slate),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000007")!, name: "Liam Garcia", message: "Thanks — see you tomorrow!", time: "Sat", unreadCount: 0, isPinned: false, isMuted: false, isFavorite: false, initials: "LG", avatarColor: Palette.coral),
-        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000008")!, name: "Research Notes", message: "4 new links saved for later.", time: "Fri", unreadCount: 4, isPinned: false, isMuted: false, isFavorite: true, initials: "RN", avatarColor: Palette.purple)
+        ChatPreview(id: UUID(uuidString: "10000000-0000-0000-0000-000000000006")!, name: "Build Alerts", message: "Pipeline #482 passed in 4m 12s.", time: "Sun", unreadCount: 27, isPinned: false, isMuted: true, isFavorite: false, initials: "BA", avatarColor: Palette.slate)
     ]
 }

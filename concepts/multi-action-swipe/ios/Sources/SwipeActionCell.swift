@@ -120,6 +120,11 @@ final class SwipeActionCell: UITableViewCell {
         settle(to: 0, side: nil, animated: animated)
     }
 
+    func open(_ side: SwipeSide, animated: Bool = true) {
+        delegate?.swipeCellDidBeginInteraction(self)
+        settle(to: openOffset(for: side), side: side, animated: animated)
+    }
+
     private func buildViewHierarchy() {
         selectionStyle = .none
         backgroundColor = .clear
@@ -297,6 +302,11 @@ final class SwipeActionCell: UITableViewCell {
         case .ended:
             let velocity = gesture.velocity(in: self).x
             let projected = currentOffset + velocity * 0.16
+            let fullSwipeThreshold = max(bounds.width * 0.78, abs(openOffset(for: projected >= 0 ? .leading : .trailing)) + 40)
+            if abs(projected) >= fullSwipeThreshold {
+                request(projected >= 0 ? .read : .archive)
+                return
+            }
             let side: SwipeSide? = projected > Metrics.actionWidth * 0.55
                 ? .leading
                 : projected < -Metrics.actionWidth * 0.55 ? .trailing : nil
@@ -414,13 +424,14 @@ final class SwipeActionCell: UITableViewCell {
 
     private func makeActionButton(for action: ChatAction) -> UIButton {
         let button = UIButton(type: .system)
+        guard let chat else { return button }
         var configuration = UIButton.Configuration.filled()
         configuration.baseBackgroundColor = action.tintColor
         configuration.baseForegroundColor = .white
         configuration.image = UIImage(systemName: action.symbolName)
         configuration.imagePlacement = .top
         configuration.imagePadding = 5
-        configuration.title = action.shortTitle
+        configuration.title = action.shortTitle(for: chat)
         configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
             outgoing.font = .roundedPreferredFont(forTextStyle: .caption2, weight: .semibold)
@@ -429,7 +440,7 @@ final class SwipeActionCell: UITableViewCell {
         configuration.cornerStyle = .fixed
         configuration.background.cornerRadius = 0
         button.configuration = configuration
-        button.accessibilityLabel = action.title
+        button.accessibilityLabel = action.title(for: chat)
         button.accessibilityHint = action.isDestructive ? "Requires confirmation" : "Performs this action on the chat"
         button.addAction(UIAction { [weak self] _ in
             self?.request(action)
@@ -460,7 +471,7 @@ final class SwipeActionCell: UITableViewCell {
             .joined(separator: ", ")
         accessibilityHint = "Double tap to open. Use the Actions rotor, or swipe horizontally, for chat actions."
         accessibilityCustomActions = (leading + trailing).uniqued().map { action in
-            UIAccessibilityCustomAction(name: action.title) { [weak self] _ in
+            UIAccessibilityCustomAction(name: action.title(for: chat)) { [weak self] _ in
                 self?.request(action)
                 return true
             }

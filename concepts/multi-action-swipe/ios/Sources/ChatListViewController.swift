@@ -8,14 +8,23 @@ final class ChatListViewController: UIViewController {
     private var undoPayload: (chat: ChatPreview, index: Int)?
     private var toastWorkItem: DispatchWorkItem?
     private var toastView: UIView?
+    private var demoCloseWorkItem: DispatchWorkItem?
+    private var coachMarkVisible = !UserDefaults.standard.bool(forKey: "multiActionSwipe.coachMarkDismissed.v2")
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Chats"
-        navigationItem.largeTitleDisplayMode = .always
+        navigationItem.largeTitleDisplayMode = .never
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Replay Demo",
+            style: .plain,
+            target: self,
+            action: #selector(replayDemo)
+        )
+        navigationItem.leftBarButtonItem?.accessibilityHint = "Shows the swipe hint and opens the first action tray"
         navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Customize",
-            image: UIImage(systemName: "slider.horizontal.3"),
+            title: "Settings",
+            style: .plain,
             target: self,
             action: #selector(showConfiguration)
         )
@@ -60,36 +69,150 @@ final class ChatListViewController: UIViewController {
     }
 
     private func makeHeader() -> UIView {
-        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 88))
+        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 80))
         header.backgroundColor = Palette.canvas
 
+        let stack = UIStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical
+        stack.spacing = 10
+        header.addSubview(stack)
+
         let eyebrow = UILabel()
-        eyebrow.translatesAutoresizingMaskIntoConstraints = false
-        eyebrow.text = "INTERACTION LAB  ·  MOCK DATA"
+        eyebrow.text = "MOCK DATA — not connected to Telegram"
         eyebrow.font = .roundedPreferredFont(forTextStyle: .caption1, weight: .bold)
         eyebrow.adjustsFontForContentSizeCategory = true
         eyebrow.textColor = Palette.accent
+        eyebrow.numberOfLines = 0
+        stack.addArrangedSubview(eyebrow)
 
-        let instruction = UILabel()
-        instruction.translatesAutoresizingMaskIntoConstraints = false
-        instruction.text = "Swipe a chat left or right to reveal three actions."
-        instruction.font = .preferredFont(forTextStyle: .subheadline)
-        instruction.adjustsFontForContentSizeCategory = true
-        instruction.textColor = Palette.secondaryText
-        instruction.numberOfLines = 0
+        if coachMarkVisible {
+            stack.addArrangedSubview(makeCoachMark())
+        }
 
-        header.addSubview(eyebrow)
-        header.addSubview(instruction)
         NSLayoutConstraint.activate([
-            eyebrow.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: Metrics.horizontalInset),
-            eyebrow.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -Metrics.horizontalInset),
-            eyebrow.topAnchor.constraint(equalTo: header.topAnchor, constant: 14),
-            instruction.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
-            instruction.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -Metrics.horizontalInset),
-            instruction.topAnchor.constraint(equalTo: eyebrow.bottomAnchor, constant: 7),
-            instruction.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -12)
+            stack.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: Metrics.horizontalInset),
+            stack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -Metrics.horizontalInset),
+            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
+            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -12)
         ])
         return header
+    }
+
+    private func makeCoachMark() -> UIView {
+        let card = UIView()
+        card.backgroundColor = .secondarySystemBackground
+        card.layer.cornerRadius = 16
+        card.layer.cornerCurve = .continuous
+
+        let content = UIStackView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        content.axis = .vertical
+        content.spacing = 10
+        card.addSubview(content)
+
+        let titleRow = UIStackView()
+        titleRow.axis = .horizontal
+        titleRow.alignment = .center
+
+        let title = UILabel()
+        title.text = "Swipe left for actions"
+        title.font = .roundedPreferredFont(forTextStyle: .headline, weight: .semibold)
+        title.adjustsFontForContentSizeCategory = true
+        titleRow.addArrangedSubview(title)
+
+        let dismiss = UIButton(type: .close)
+        dismiss.accessibilityLabel = "Dismiss swipe hint"
+        dismiss.addTarget(self, action: #selector(dismissCoachMark), for: .touchUpInside)
+        dismiss.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        dismiss.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        titleRow.addArrangedSubview(dismiss)
+        content.addArrangedSubview(titleRow)
+
+        let preview = UIStackView()
+        preview.axis = .horizontal
+        preview.distribution = .fillEqually
+        preview.spacing = 4
+        for action in ActionConfiguration.defaults.trailing {
+            let item = UILabel()
+            item.text = "  \(action.shortTitle)"
+            item.font = .roundedPreferredFont(forTextStyle: .caption2, weight: .semibold)
+            item.textColor = .white
+            item.backgroundColor = action.tintColor
+            item.textAlignment = .center
+            item.layer.cornerRadius = 8
+            item.clipsToBounds = true
+            item.heightAnchor.constraint(equalToConstant: 32).isActive = true
+            item.isAccessibilityElement = false
+            preview.addArrangedSubview(item)
+        }
+        preview.accessibilityLabel = "Preview: Archive, Mute, Delete action tray"
+        preview.isAccessibilityElement = true
+        content.addArrangedSubview(preview)
+
+        let detail = UILabel()
+        detail.text = "Reveal Archive, Mute, and Delete without performing an action."
+        detail.font = .preferredFont(forTextStyle: .footnote)
+        detail.adjustsFontForContentSizeCategory = true
+        detail.textColor = Palette.secondaryText
+        detail.numberOfLines = 0
+        content.addArrangedSubview(detail)
+
+        var tryConfiguration = UIButton.Configuration.tinted()
+        tryConfiguration.title = "Try Demo"
+        tryConfiguration.image = UIImage(systemName: "hand.tap.fill")
+        tryConfiguration.imagePadding = 8
+        tryConfiguration.cornerStyle = .medium
+        let tryButton = UIButton(configuration: tryConfiguration)
+        tryButton.titleLabel?.font = .roundedPreferredFont(forTextStyle: .body, weight: .semibold)
+        tryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        tryButton.accessibilityHint = "Opens and then closes the first chat's action tray without performing an action"
+        tryButton.addTarget(self, action: #selector(tryDemo), for: .touchUpInside)
+        content.addArrangedSubview(tryButton)
+
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14)
+        ])
+        return card
+    }
+
+    private func refreshHeader() {
+        tableView.tableHeaderView = makeHeader()
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+    }
+
+    @objc private func dismissCoachMark() {
+        coachMarkVisible = false
+        UserDefaults.standard.set(true, forKey: "multiActionSwipe.coachMarkDismissed.v2")
+        refreshHeader()
+    }
+
+    @objc private func replayDemo() {
+        coachMarkVisible = true
+        refreshHeader()
+        DispatchQueue.main.async { [weak self] in self?.tryDemo() }
+    }
+
+    @objc private func tryDemo() {
+        guard !chats.isEmpty else { return }
+        demoCloseWorkItem?.cancel()
+        tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .none, animated: false)
+        tableView.layoutIfNeeded()
+        guard let cell = tableView.cellForRow(at: IndexPath(row: 0, section: 0)) as? SwipeActionCell else { return }
+        closeOpenCell(except: cell)
+        cell.open(.trailing, animated: true)
+        UIAccessibility.post(notification: .announcement, argument: "Action tray opened for \(chats[0].name). No action selected.")
+
+        let item = DispatchWorkItem { [weak self, weak cell] in
+            cell?.close(animated: true)
+            if self?.openCell === cell { self?.openCell = nil }
+        }
+        demoCloseWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: item)
     }
 
     @objc private func showConfiguration() {
@@ -115,8 +238,12 @@ final class ChatListViewController: UIViewController {
         guard let indexPath = tableView.indexPath(for: cell), chats.indices.contains(indexPath.row) else { return }
         switch action {
         case .read:
-            chats[indexPath.row].unreadCount = 0
-            reload(row: indexPath.row, announcement: "Marked \(chats[indexPath.row].name) as read")
+            let wasUnread = chats[indexPath.row].unreadCount > 0
+            chats[indexPath.row].unreadCount = wasUnread ? 0 : 1
+            reload(
+                row: indexPath.row,
+                announcement: "Marked \(chats[indexPath.row].name) as \(wasUnread ? "read" : "unread")"
+            )
 
         case .pin:
             chats[indexPath.row].isPinned.toggle()
@@ -295,7 +422,37 @@ extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
         showToast(message: "Demo only · no chat backend", offersUndo: false)
     }
 
+    func tableView(
+        _ tableView: UITableView,
+        contextMenuConfigurationForRowAt indexPath: IndexPath,
+        point: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        guard chats.indices.contains(indexPath.row) else { return nil }
+        let chatID = chats[indexPath.row].id
+        return UIContextMenuConfiguration(identifier: chatID.uuidString as NSString, previewProvider: nil) { [weak self] _ in
+            guard
+                let self,
+                let currentIndex = self.chats.firstIndex(where: { $0.id == chatID }),
+                let cell = tableView.cellForRow(at: IndexPath(row: currentIndex, section: 0)) as? SwipeActionCell
+            else { return nil }
+
+            var seen = Set<ChatAction>()
+            let actions = (self.configuration.leading + self.configuration.trailing).filter { seen.insert($0).inserted }
+            return UIMenu(title: "Chat actions", children: actions.map { action in
+                UIAction(
+                    title: action.title(for: self.chats[currentIndex]),
+                    image: UIImage(systemName: action.symbolName),
+                    attributes: action.isDestructive ? .destructive : []
+                ) { [weak self, weak cell] _ in
+                    guard let self, let cell else { return }
+                    self.handle(action: action, for: cell)
+                }
+            })
+        }
+    }
+
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        demoCloseWorkItem?.cancel()
         closeOpenCell()
     }
 }
@@ -307,6 +464,7 @@ extension ChatListViewController: SwipeActionCellDelegate {
     }
 
     func swipeCell(_ cell: SwipeActionCell, didRequest action: ChatAction) {
+        demoCloseWorkItem?.cancel()
         handle(action: action, for: cell)
     }
 }
@@ -319,6 +477,7 @@ extension ChatListViewController: ActionConfigurationViewControllerDelegate {
         self.configuration = configuration
         openCell = nil
         tableView.reloadData()
+        refreshHeader()
         UIAccessibility.post(notification: .announcement, argument: "Swipe actions updated")
     }
 }
