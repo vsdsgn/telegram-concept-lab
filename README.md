@@ -1,3 +1,5 @@
+
+> **Official-source progress (2026-11-22):** Real iOS `ReactionContextGeometryTests` passed using the repository Bazel/XCTest target (iPhone 17 / iOS 26.1). Full Telegram iOS app build and authenticated chat testing remain pending. Android Java syntax checks passed, but official Gradle configuration failed because the exact pinned `TMessagesProj_Modules/media` submodule is not downloaded; NDK 27.2 is also missing. The Mac app shows these build/test results and links to their logs. Do not treat the older standalone demo PRs as integrated Telegram.
 > **IMPORTANT:** Historical Concept Lab jobs are standalone mock demos, NOT modifications of Telegram. The official clients are checked out separately under `~/Projects/telegram-integrations/Telegram-iOS-reaction-wheel` and `Telegram-Android-reaction-wheel`. `lab.py new` requires `--demo` to avoid silently creating more mocks.
 
 # Telegram Concept Lab

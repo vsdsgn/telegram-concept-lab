@@ -363,12 +363,24 @@ private struct ContentView: View {
                     let directory = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/Telegram-" +
                             (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
+                    let diagnostics = FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent("Projects/telegram-integrations/" +
+                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-official-gradle-offline"))
+                    let resultPath = diagnostics.appendingPathExtension("exit")
+                    let result = (try? String(contentsOf: resultPath, encoding: .utf8))?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
                     VStack(alignment: .leading, spacing: 9) {
                         HStack {
                             Text(platform == "ios" ? "Telegram iOS · Xcode/Bazel" : "Telegram Android · Gradle")
                                 .font(.headline)
                             Spacer()
-                            StatusTag(text: "Исходники / требует сборки", color: .orange)
+                            if result == "0" {
+                                StatusTag(text: "Тесты модуля · OK", color: .green)
+                            } else if result != nil {
+                                StatusTag(text: "Сборка / тест заблокирован", color: .red)
+                            } else {
+                                StatusTag(text: "Не проверено полностью", color: .orange)
+                            }
                         }
                         Text(directory.path)
                             .font(.system(size: 11, design: .monospaced))
@@ -376,13 +388,21 @@ private struct ContentView: View {
                         Button("Открыть исходники в Finder") {
                             NSWorkspace.shared.open(directory)
                         }
-                        let log = FileManager.default.homeDirectoryForCurrentUser
-                            .appendingPathComponent("Projects/telegram-integrations/" + platform + "-implementation.log")
+                        let log = diagnostics.appendingPathExtension("log")
                         if let raw = try? String(contentsOf: log, encoding: .utf8) {
-                            Text(raw.components(separatedBy: .newlines).suffix(9).joined(separator: "\n"))
+                            HStack {
+                                Text(platform == "ios" ? "Bazel · XCTest" : "Gradle · настоящий клиент")
+                                    .font(.caption).fontWeight(.medium)
+                                Spacer()
+                                Button("Открыть полный лог") { NSWorkspace.shared.open(log) }
+                                    .font(.caption)
+                            }
+                            Text(raw.components(separatedBy: .newlines).suffix(12).joined(separator: "\n"))
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(9)
+                                .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(12)
                         }
+                        Text("Это проверка исходников. Установленная модификация Telegram с реальным чатом пока не подтверждена.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     .padding(15)
                     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
