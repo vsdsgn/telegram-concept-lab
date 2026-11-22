@@ -282,6 +282,9 @@ def main():
     s.add_parser("status")
     verification = s.add_parser("verify")
     verification.add_argument("slug")
+    preview_parser = s.add_parser("preview")
+    preview_parser.add_argument("slug")
+    preview_parser.add_argument("platform", choices=["ios", "android"])
     resume_parser = s.add_parser("resume")
     resume_parser.add_argument("slug")
     stop_parser = s.add_parser("stop")
@@ -314,6 +317,9 @@ def main():
     elif args.command == "verify":
         import verify
         sys.exit(0 if verify.verify_all(valid_slug(args.slug)) else 1)
+    elif args.command == "preview":
+        import preview
+        preview.preview(valid_slug(args.slug), args.platform)
     elif args.command == "resume":
         resume(args.slug)
     elif args.command == "stop":

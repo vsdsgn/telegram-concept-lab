@@ -142,4 +142,14 @@ class CollaborativeTest(unittest.TestCase):
             finally:
                 collab.ROOT, collab.STATE, collab.TASKS = old
 
+    def test_preview_android_application_id(self):
+        import preview
+        with tempfile.TemporaryDirectory() as td:
+            gradle = Path(td) / "build.gradle.kts"
+            gradle.write_text('android { defaultConfig { applicationId = "dev.example.reaction" } }')
+            self.assertEqual(preview.android_id(gradle), "dev.example.reaction")
+            gradle.write_text("android { defaultConfig {} }")
+            with self.assertRaisesRegex(RuntimeError, "applicationId"):
+                preview.android_id(gradle)
+
 if __name__=="__main__": unittest.main()

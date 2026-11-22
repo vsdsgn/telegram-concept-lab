@@ -48,6 +48,10 @@ python3 lab.py prs animated-swipe-demo
 
 macOS with Xcode, Android Studio + SDK, Git, GitHub CLI authenticated, Codex CLI authenticated, Claude Code authenticated, Homebrew openjdk@17 for Gradle (pinned for Android runs only). Run `python3 lab.py doctor` for checks. See `AGENTS.md` and `DESIGN.md`.
 
+## One-click preview
+
+After builds pass, click **Демо iOS** or **Демо Android** in the native Mac app. It installs and launches the compiled prototype directly on an available simulator/emulator, takes screenshots, and shows them inside the Concept Lab window. Xcode/Android Studio are optional for code inspection.
+
 ## Reliable execution and recovery
 
 The native Mac app now offers Stop, Resume, and Verify builds. Completed Claude/Codex stages are retained across failures; output written by a successfully finished model can be recovered without paying for the same generation again. New and resumed jobs prevent idle sleep.

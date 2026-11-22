@@ -14,7 +14,8 @@ This is a **real SwiftUI macOS app** (not AppleScript, Electron, web dashboard o
 4. View the concept in the left sidebar; status and 11 stages (including native build checks) refresh every 3 seconds. Select a stage to read its model log.
 5. If a stage fails, click **Продолжить с места ошибки**. Already verified work is not repeated. **Остановить** cancels the worker group while preserving completed stages.
 6. After both models finish, independently verify the iOS Xcode simulator build and Android Gradle build/unit tests. The **Проверить сборки** button lets you repeat this check.
-7. Once both verifications pass, review the Xcode and Android Studio apps, then use **Создать черновые PR**. No auto-merge.
+7. Once both verifications pass, click **Демо iOS** and **Демо Android**: installs and launches builds in booted simulators, and shows screenshots in the concept view. No IDE navigation is needed.
+8. Use **Создать черновые PR** to publish platform branches. No auto-merge.
 
 The Python pipeline runs locally on the Mac **independently of the app window**. Keep the Mac on and awake while it runs; closing the app does not cancel an already running job.
 
@@ -44,3 +45,9 @@ The legacy command script forwards to the native app, while its old Desktop shor
 - New and resumed local jobs prevent idle sleep through macOS caffeinate.
 - Failed builds block PR creation. Evidence is in .lab/logs/<slug>/verify-ios.log and verify-android.log.
 - The native app starts local sandboxed agents. Paperclip's remote agent adapters stay paused for security.
+
+## Preview without IDEs
+
+The native frontend invokes python3 lab.py preview <slug> ios|android. The preview helper checks successful native build markers, selects or boots a suitable simulator/emulator, installs and launches the app, and saves a screenshot to .lab/previews/<slug>/<platform>.png.
+
+Source project buttons (Код iOS / Код Android) remain available for engineering work. Simulator screenshots do not verify real-device haptics.

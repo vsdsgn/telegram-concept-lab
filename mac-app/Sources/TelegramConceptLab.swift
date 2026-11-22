@@ -159,6 +159,16 @@ private final class LabStore: ObservableObject {
         execute(["verify", slug]) { _ in }
     }
 
+    func preview(slug: String, platform: String) {
+        execute(["preview", slug, platform]) { _ in }
+    }
+
+    func previewImage(slug: String, platform: String) -> NSImage? {
+        NSImage(contentsOf: LabPaths.state.appendingPathComponent(
+            "previews/" + slug + "/" + platform + ".png"
+        ))
+    }
+
     private func execute(_ arguments: [String], completion: @escaping (Bool) -> Void) {
         guard !busy else { return }
         guard FileManager.default.fileExists(atPath: LabPaths.root.appendingPathComponent("lab.py").path) else {
@@ -469,15 +479,28 @@ private struct ContentView: View {
                 }
 
                 HStack {
+                    Button { store.preview(slug: job.slug, platform: "ios") } label: {
+                        Label("Демо iOS", systemImage: "iphone")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.busy || !job.isVerified)
+                    Button { store.preview(slug: job.slug, platform: "android") } label: {
+                        Label("Демо Android", systemImage: "smartphone")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.busy || !job.isVerified)
                     Button { store.openIOS(slug: job.slug) } label: {
-                        Label("Открыть iOS", systemImage: "iphone")
+                        Label("Код iOS", systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                     Button { store.openAndroid(slug: job.slug) } label: {
-                        Label("Открыть Android", systemImage: "smartphone")
+                        Label("Код Android", systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                     Button { store.openLogs(slug: job.slug) } label: {
-                        Label("Папка логов", systemImage: "folder")
+                        Label("Логи", systemImage: "folder")
                     }
+                }
+                .buttonStyle(.bordered)
+                HStack {
                     Spacer()
                     if job.isCollaborative && (job.state == "Ошибка" || job.isInterrupted) {
                         Button {
@@ -519,6 +542,30 @@ private struct ContentView: View {
                     }
                 } message: {
                     Text("Исходники будут отправлены в публичный GitHub. Автоматического merge не будет.")
+                }
+
+                if store.previewImage(slug: job.slug, platform: "ios") != nil ||
+                   store.previewImage(slug: job.slug, platform: "android") != nil {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Снимки запущенных приложений").font(.headline)
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(["ios", "android"], id: \.self) { platform in
+                                if let screenshot = store.previewImage(slug: job.slug, platform: platform) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(platform.uppercased())
+                                            .font(.caption).foregroundStyle(.secondary)
+                                        Image(nsImage: screenshot)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(maxWidth: .infinity, maxHeight: 280)
+                                            .clipShape(RoundedRectangle(cornerRadius: 9))
+                                            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 9))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
