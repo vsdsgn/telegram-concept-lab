@@ -4,13 +4,13 @@ Public, code-first Telegram UX experiments for **iOS and Android**, developed in
 
 ## Native Mac app (recommended)
 
-Open **Telegram Concept Lab.app** on the Mac Desktop (installed at \`~/Applications/Telegram Concept Lab.app\`).
+Open **Telegram Concept Lab.app** on the Mac Desktop (installed at `~/Applications/Telegram Concept Lab.app`).
 
-This is a native SwiftUI interface with a text editor, explicit public-GitHub confirmation, live job/phase status, per-stage logs, Xcode/Android Studio launch links and manual draft PR controls. No Terminal or AppleScript menu is required. The old \`.command\` shortcut now forwards to this app.
+This is a native SwiftUI interface with a text editor, explicit public-GitHub confirmation, live job/phase status, per-stage logs, Xcode/Android Studio launch links and manual draft PR controls. No Terminal or AppleScript menu is required. The legacy command script forwards to this app, but its old Desktop shortcut has been removed so only the native app icon remains.
 
-To rebuild the app after pulling source updates, run \`./scripts/build-mac-app.sh\`. See [mac-app/README.md](mac-app/README.md).
+To rebuild the app after pulling source updates, run `./scripts/build-mac-app.sh`. See [mac-app/README.md](mac-app/README.md).
 
-Paperclip remains the task board; its default agent adapter is paused for safety. The native app executes the sandboxed local \`lab.py\` pipeline directly.
+Paperclip remains the task board; its default agent adapter is paused for safety. The native app executes the sandboxed local `lab.py` pipeline directly.
 
 ## One prompt, two implementations
 
