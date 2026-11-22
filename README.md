@@ -48,6 +48,12 @@ python3 lab.py prs animated-swipe-demo
 
 macOS with Xcode, Android Studio + SDK, Git, GitHub CLI authenticated, Codex CLI authenticated, Claude Code authenticated, Homebrew openjdk@17 for Gradle (pinned for Android runs only). Run `python3 lab.py doctor` for checks. See `AGENTS.md` and `DESIGN.md`.
 
+## Reliable execution and recovery
+
+The native Mac app now offers Stop, Resume, and Verify builds. Completed Claude/Codex stages are retained across failures; output written by a successfully finished model can be recovered without paying for the same generation again. New and resumed jobs prevent idle sleep.
+
+Full project completion requires independent Xcode simulator compilation and offline Gradle build/tests (verify.py); only then does the app enable draft PR creation.
+
 ## Agent safety and verified prerequisites
 
 - Claude runs with native Bash sandbox, fail-if-unavailable enabled, no inherited MCP connectors, and blocks reads/writes outside working directories. Both code reviews use read-only planning mode.

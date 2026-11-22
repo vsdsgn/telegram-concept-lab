@@ -84,7 +84,8 @@ class CollaborativeTest(unittest.TestCase):
                     git(cwd,"add",".")
                     if git(cwd,"status","--porcelain"):
                         git(cwd,"commit","-m",name)
-                with mock.patch.object(collab, "stage", side_effect=fake_stage):
+                with mock.patch.object(collab, "stage", side_effect=fake_stage), \
+                     mock.patch("verify.verify_all", return_value=True):
                     self.assertEqual(collab.run_pipeline("sample"),0)
                 self.assertEqual(len(seen),9)
                 self.assertEqual(sum(agent=="claude" for _,agent,_ in seen),4)

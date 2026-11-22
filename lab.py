@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import signal
 import sys
 
 ROOT = Path(__file__).resolve().parent
@@ -107,7 +108,7 @@ def logs(slug, platform):
     valid_slug(slug)
     if registry().get(slug, {}).get("mode") == "collaborative":
         allowed = {"pipeline","design","design-review","design-revise","build-ios","build-android",
-                   "review-ios","review-android","fix-ios","fix-android"}
+                   "review-ios","review-android","fix-ios","fix-android","verify-ios","verify-android"}
         if platform not in allowed: raise SystemExit(f"Use one of: {', '.join(sorted(allowed))}")
         p = STATE / "logs" / slug / (platform + ".log")
         print("".join(p.read_text(errors="replace").splitlines(keepends=True)[-80:]) if p.exists() else "Not started")
@@ -127,6 +128,10 @@ def prs(slug):
         marker = STATE / "logs" / slug / "pipeline.exit"
         if not marker.exists() or marker.read_text().strip() != "0":
             raise SystemExit("The design-build-review-fix pipeline is not complete; do not publish PRs yet.")
+        if any(not (STATE / "logs" / slug / f"verify-{p}.exit").exists()
+               or (STATE / "logs" / slug / f"verify-{p}.exit").read_text().strip() != "0"
+               for p in ("ios", "android")):
+            raise SystemExit("Native Xcode and Gradle builds must pass independent verification before PRs.")
     for platform, job in jobs["platforms"].items():
         if not (STATE / "logs" / slug / f"{platform}.exit").exists():
             print(platform, "not finished; skip")
@@ -183,6 +188,44 @@ def retry(slug):
         save(jobs)
         print(platform, "restarted", "pid=", p.pid)
 
+def pid_alive(pid):
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stop(slug):
+    slug = valid_slug(slug)
+    jobs = registry()
+    job = jobs.get(slug)
+    if not job or job.get("mode") != "collaborative":
+        raise SystemExit("Only collaborative jobs can be stopped.")
+    if job.get("phase") in ("failed", "complete"):
+        raise SystemExit("Job has already stopped.")
+    pid = job.get("pid")
+    if not pid_alive(pid):
+        raise SystemExit("Job process is not alive; use resume instead.")
+    if pid == os.getpid() or pid == os.getpgrp():
+        raise SystemExit("Refusing to signal current shell.")
+    # Every job starts in its own session. Stop the worker AND its model subprocesses.
+    os.killpg(pid, signal.SIGTERM)
+    job["phase"] = "failed"
+    job["failed_step"] = "stopped"
+    job["error"] = "Остановлено пользователем. Можно продолжить с сохранённых этапов."
+    save(jobs)
+    logs = STATE / "logs" / slug
+    (logs / "pipeline.exit").write_text("1")
+    with (logs / "pipeline.log").open("a") as f:
+        f.write("\n[STOP] User requested cancellation\n")
+    print(f"STOPPED {slug}")
+
+
 def resume(slug):
     slug = valid_slug(slug)
     jobs = registry()
@@ -192,7 +235,12 @@ def resume(slug):
     if job.get("phase") == "complete":
         raise SystemExit("Concept is complete; create draft PRs instead.")
     if job.get("phase") != "failed":
-        raise SystemExit("Concept has not failed. Refusing a duplicate parallel run.")
+        if pid_alive(job.get("pid")):
+            raise SystemExit("Concept is still running. Refusing a duplicate parallel run.")
+        job["phase"] = "failed"
+        job["error"] = "Предыдущий процесс прерван. Восстанавливаем."
+        jobs[slug] = job
+        save(jobs)
     log_dir = STATE / "logs" / slug
     (log_dir / "pipeline.exit").unlink(missing_ok=True)
     job["phase"] = "queued"
@@ -202,7 +250,7 @@ def resume(slug):
     with (log_dir / "pipeline.log").open("a") as f:
         f.write("\n[RESUME] Restarting from first incomplete stage\n")
         p = subprocess.Popen(
-            [sys.executable, str(ROOT / "collab.py"), "run", slug],
+            ["/usr/bin/caffeinate", "-i", sys.executable, str(ROOT / "collab.py"), "run", slug],
             cwd=ROOT, stdin=subprocess.DEVNULL, stdout=f,
             stderr=subprocess.STDOUT, start_new_session=True,
         )
@@ -221,15 +269,20 @@ def main():
     n.add_argument("prompt")
     n.add_argument("--swap", action="store_true")
     s.add_parser("status")
+    verification = s.add_parser("verify")
+    verification.add_argument("slug")
     resume_parser = s.add_parser("resume")
     resume_parser.add_argument("slug")
+    stop_parser = s.add_parser("stop")
+    stop_parser.add_argument("slug")
     reparse = s.add_parser("retry")
     reparse.add_argument("slug")
     l = s.add_parser("logs")
     l.add_argument("slug")
     l.add_argument("platform", choices=["ios", "android", "pipeline", "design",
                                          "design-review", "design-revise", "build-ios", "build-android",
-                                         "review-ios", "review-android", "fix-ios", "fix-android"])
+                                         "review-ios", "review-android", "fix-ios", "fix-android",
+                                         "verify-ios", "verify-android"])
     p = s.add_parser("prs")
     p.add_argument("slug")
     w = s.add_parser("worker", help=argparse.SUPPRESS)
@@ -247,8 +300,13 @@ def main():
         new(args.slug, args.prompt, args.swap)
     elif args.command == "status":
         status()
+    elif args.command == "verify":
+        import verify
+        sys.exit(0 if verify.verify_all(valid_slug(args.slug)) else 1)
     elif args.command == "resume":
         resume(args.slug)
+    elif args.command == "stop":
+        stop(args.slug)
     elif args.command == "retry":
         retry(args.slug)
     elif args.command == "logs":

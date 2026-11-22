@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import Combine
 import Foundation
+import Darwin
 
 private enum LabPaths {
     static let root = FileManager.default.homeDirectoryForCurrentUser
@@ -28,7 +29,9 @@ private let phases: [Phase] = [
     .init(key: "review-ios", label: "Claude · ревью iOS"),
     .init(key: "review-android", label: "Claude · ревью Android"),
     .init(key: "fix-ios", label: "Codex · исправления iOS"),
-    .init(key: "fix-android", label: "Codex · исправления Android")
+    .init(key: "fix-android", label: "Codex · исправления Android"),
+    .init(key: "verify-ios", label: "Независимая сборка Xcode"),
+    .init(key: "verify-android", label: "Независимая сборка Gradle")
 ]
 
 private struct LabJob: Identifiable {
@@ -64,6 +67,19 @@ private struct LabJob: Identifiable {
     }
 
     var isComplete: Bool { state == "Завершено" || state == "Старый пилот" }
+    var isVerified: Bool {
+        guard isCollaborative else { return isComplete }
+        return ["ios", "android"].allSatisfy { platform in
+            let path = LabPaths.logRoot.appendingPathComponent(slug + "/verify-" + platform + ".exit")
+            return ((try? String(contentsOf: path, encoding: .utf8)) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines) == "0"
+        }
+    }
+    var isInterrupted: Bool {
+        guard isCollaborative, state == "В процессе" else { return false }
+        let pid = legacyPlatforms["__pid"].flatMap { Int($0) } ?? 0
+        return pid > 0 && kill(Int32(pid), 0) != 0
+    }
 }
 
 @MainActor
@@ -86,6 +102,9 @@ private final class LabStore: ObservableObject {
                 for (platform, p) in platforms {
                     platformStatuses[platform] = p["agent"] as? String ?? "unknown"
                 }
+            }
+            if let pid = dict["pid"] as? Int {
+                platformStatuses["__pid"] = String(pid)
             }
             return LabJob(
                 slug: slug,
@@ -120,6 +139,14 @@ private final class LabStore: ObservableObject {
         }
     }
 
+    func resume(slug: String) {
+        execute(["resume", slug]) { _ in }
+    }
+
+    func stop(slug: String) {
+        execute(["stop", slug]) { _ in }
+    }
+
     func createPR(slug: String) {
         execute(["prs", slug]) { success in
             if success { NSWorkspace.shared.open(URL(string: LabPaths.github.absoluteString + "/pulls")!) }
@@ -127,6 +154,10 @@ private final class LabStore: ObservableObject {
     }
 
     func doctor() { execute(["doctor"]) { _ in } }
+
+    func verify(slug: String) {
+        execute(["verify", slug]) { _ in }
+    }
 
     private func execute(_ arguments: [String], completion: @escaping (Bool) -> Void) {
         guard !busy else { return }
@@ -234,6 +265,8 @@ private struct ContentView: View {
     @State private var publicAgreed = false
     @State private var confirmLaunch = false
     @State private var confirmPR = false
+    @State private var confirmResume = false
+    @State private var confirmStop = false
     @State private var selectedLog = "pipeline"
 
     private let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
@@ -446,10 +479,40 @@ private struct ContentView: View {
                         Label("Папка логов", systemImage: "folder")
                     }
                     Spacer()
+                    if job.isCollaborative && (job.state == "Ошибка" || job.isInterrupted) {
+                        Button {
+                            confirmResume = true
+                        } label: {
+                            Label("Продолжить с места ошибки", systemImage: "arrow.clockwise")
+                        }
+                        .disabled(store.busy)
+                    }
+                    if job.isCollaborative && job.state == "В процессе" && !job.isInterrupted {
+                        Button("Остановить") { confirmStop = true }
+                            .disabled(store.busy)
+                    }
+                    if job.isCollaborative && job.isComplete {
+                        Button("Проверить сборки") { store.verify(slug: job.slug) }
+                            .disabled(store.busy)
+                    }
                     Button("Создать черновые PR") { confirmPR = true }
-                        .disabled(store.busy || !job.isComplete)
+                        .disabled(store.busy || !job.isComplete || !job.isVerified)
                 }
                 .buttonStyle(.bordered)
+                .confirmationDialog("Остановить работу моделей?", isPresented: $confirmStop) {
+                    Button("Остановить Codex и Claude", role: .destructive) {
+                        store.stop(slug: job.slug)
+                    }
+                } message: {
+                    Text("Текущие модельные вызовы будут остановлены, результаты завершённых этапов сохранятся. Позже можно продолжить.")
+                }
+                .confirmationDialog("Продолжить прерванный запуск?", isPresented: $confirmResume) {
+                    Button("Да, продолжить с первого незавершённого этапа") {
+                        store.resume(slug: job.slug)
+                    }
+                } message: {
+                    Text("Уже завершённые этапы не будут запущены повторно. При необходимости агент продолжит с сохранёнными файлами.")
+                }
                 .confirmationDialog("Создать черновые Pull Request?", isPresented: $confirmPR) {
                     Button("Создать PR для iOS и Android") {
                         store.createPR(slug: job.slug)

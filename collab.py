@@ -45,6 +45,8 @@ PHASES = [
     ("review-android", "Claude: Android code review"),
     ("fix-ios", "Codex: iOS fixes / design verification"),
     ("fix-android", "Codex: Android fixes / design verification"),
+    ("verify-ios", "Independent Xcode simulator build"),
+    ("verify-android", "Independent Gradle build and tests"),
 ]
 
 def git(*args, cwd=ROOT):
@@ -117,7 +119,7 @@ def create(slug, prompt):
     save(jobs)
     with (logs / "pipeline.log").open("w") as f:
         proc = subprocess.Popen(
-            [sys.executable, str(ROOT / "collab.py"), "run", slug],
+            ["/usr/bin/caffeinate", "-i", sys.executable, str(ROOT / "collab.py"), "run", slug],
             cwd=ROOT, stdin=subprocess.DEVNULL, stdout=f,
             stderr=subprocess.STDOUT, start_new_session=True,
         )
@@ -363,6 +365,11 @@ def run_pipeline(slug):
                 except Exception as e: errors.append(f"{plat}: {e}")
             if errors:
                 raise RuntimeError("; ".join(errors))
+        update(slug, phase="verifying")
+        import verify
+        # No task is complete until BOTH native build pipelines actually succeed.
+        if not verify.verify_all(slug):
+            raise RuntimeError("Independent native build verification failed. Check verify-ios/android logs.")
         for plat in ("ios", "android"):
             (STATE / "logs" / slug / f"{plat}.exit").write_text("0")
         update(slug, phase="complete", completed_at=dt.datetime.now(dt.timezone.utc).isoformat())
