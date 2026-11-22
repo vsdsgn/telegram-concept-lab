@@ -121,6 +121,15 @@ class CollaborativeTest(unittest.TestCase):
                 self.assertEqual(git(root,"status","--porcelain"),"")
                 self.assertEqual((root/".lab/logs/sample/design.exit").read_text(),"0")
                 self.assertIn("UX_DESIGN.md",git(root,"show","--stat","--oneline","HEAD"))
+                # Regression: modifying a TRACKED file produces " M path" in
+                # porcelain output, and must not lose the first filename char.
+                def revise_design(agent, cwd, prompt, log, readonly=False):
+                    (cwd/"concepts/sample/UX_DESIGN.md").write_text("Claude revised UX")
+                    return "Revised"
+                with mock.patch.object(collab, "tool", side_effect=revise_design):
+                    collab.stage("sample","design-revise","claude",root,"Revise")
+                self.assertEqual((root/".lab/logs/sample/design-revise.exit").read_text(),"0")
+                self.assertEqual(git(root,"status","--porcelain"),"")
                 def write_unexpected(agent, cwd, prompt, log, readonly=False):
                     (cwd/"concepts/sample/DESIGN_REVIEW.md").write_text("Correct review")
                     (cwd/"UNAUTHORIZED.txt").write_text("Unexpected file")

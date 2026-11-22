@@ -183,6 +183,34 @@ def retry(slug):
         save(jobs)
         print(platform, "restarted", "pid=", p.pid)
 
+def resume(slug):
+    slug = valid_slug(slug)
+    jobs = registry()
+    job = jobs.get(slug)
+    if not job or job.get("mode") != "collaborative":
+        raise SystemExit("Only collaborative jobs can resume.")
+    if job.get("phase") == "complete":
+        raise SystemExit("Concept is complete; create draft PRs instead.")
+    if job.get("phase") != "failed":
+        raise SystemExit("Concept has not failed. Refusing a duplicate parallel run.")
+    log_dir = STATE / "logs" / slug
+    (log_dir / "pipeline.exit").unlink(missing_ok=True)
+    job["phase"] = "queued"
+    job.pop("error", None)
+    job.pop("failed_step", None)
+    save(jobs)
+    with (log_dir / "pipeline.log").open("a") as f:
+        f.write("\n[RESUME] Restarting from first incomplete stage\n")
+        p = subprocess.Popen(
+            [sys.executable, str(ROOT / "collab.py"), "run", slug],
+            cwd=ROOT, stdin=subprocess.DEVNULL, stdout=f,
+            stderr=subprocess.STDOUT, start_new_session=True,
+        )
+    jobs = registry()
+    jobs[slug]["pid"] = p.pid
+    save(jobs)
+    print(f"RESUMED {slug} pid={p.pid}")
+
 def main():
     ap = argparse.ArgumentParser()
     s = ap.add_subparsers(dest="command", required=True)
@@ -193,6 +221,8 @@ def main():
     n.add_argument("prompt")
     n.add_argument("--swap", action="store_true")
     s.add_parser("status")
+    resume_parser = s.add_parser("resume")
+    resume_parser.add_argument("slug")
     reparse = s.add_parser("retry")
     reparse.add_argument("slug")
     l = s.add_parser("logs")
@@ -217,6 +247,8 @@ def main():
         new(args.slug, args.prompt, args.swap)
     elif args.command == "status":
         status()
+    elif args.command == "resume":
+        resume(args.slug)
     elif args.command == "retry":
         retry(args.slug)
     elif args.command == "logs":

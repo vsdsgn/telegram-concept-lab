@@ -190,7 +190,20 @@ def stage(slug, name, agent, cwd, prompt, readonly=False, report=None):
     else:
         raise RuntimeError(f"Unknown stage {name}")
 
-    result = tool(agent, cwd, prompt, log, readonly=readonly)
+    marker = log.with_suffix(".exit")
+    model_marker = log.with_suffix(".model-exit")
+    # If the model successfully finished and only postprocessing failed,
+    # recover the pending artifact without repeating the expensive model call.
+    can_adopt = (
+        marker.exists() and marker.read_text().strip() == "1"
+        and model_marker.exists() and model_marker.read_text().strip() == "0"
+        and report is None and (cwd / scope).exists()
+    )
+    if can_adopt:
+        print(f"[{slug}] {name}: recovering completed model output", flush=True)
+        result = "Recovered existing file from successful model invocation."
+    else:
+        result = tool(agent, cwd, prompt, log, readonly=readonly)
     if report is not None:
         if not result.strip():
             raise RuntimeError(f"Empty code review by {agent}: {name}")
@@ -198,7 +211,16 @@ def stage(slug, name, agent, cwd, prompt, readonly=False, report=None):
         report.write_text("# Claude Code Review\n\n" + result[-25000:] + "\n")
     if not (cwd / scope).exists():
         raise RuntimeError(f"{name} produced no expected artifact: {scope}")
-    changes = git("status", "--porcelain", "-uall", cwd=cwd).splitlines()
+    # Do NOT use git(...).strip() here: porcelain v1 uses a leading SPACE in
+    # the two-character status code for modified tracked files (" M path").
+    # Stripping it shifts line[3:] by one and corrupts filenames.
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-uall"],
+        cwd=cwd, capture_output=True, text=True,
+    )
+    if status.returncode:
+        raise RuntimeError(f"git status failed: {status.stderr[-400:]}")
+    changes = status.stdout.splitlines()
     for line in changes:
         path = line[3:].split(" -> ")[-1]
         if path != scope.as_posix() and not path.startswith(scope.as_posix() + "/"):
@@ -253,8 +275,16 @@ def run_pipeline(slug):
     ios, android = root / "ios", root / "android"
     shared = f"concepts/{slug}"
     (STATE / "logs" / slug).mkdir(parents=True, exist_ok=True)
+    def maybe_stage(*args, **kwargs):
+        name = args[1]
+        marker = STATE / "logs" / slug / f"{name}.exit"
+        if marker.exists() and marker.read_text().strip() == "0":
+            print(f"[{slug}] SKIP verified stage: {name}", flush=True)
+            return ""
+        return stage(*args, **kwargs)
+
     try:
-        stage(slug, "design", "claude", design,
+        maybe_stage(slug, "design", "claude", design,
               f"Act as a senior product interaction designer for Telegram UI. "
               f"Read AGENTS.md, DESIGN.md and {shared}/SPEC.md. "
               f"Design the concept FOR BOTH iOS AND ANDROID, not code-first. "
@@ -264,7 +294,7 @@ def run_pipeline(slug):
               "acceptance criteria. Optionally add concise text wireframes as markdown. "
               "No application implementation yet. Do NOT commit or push. "
               "Use only public mock data and avoid private content.")
-        stage(slug, "design-review", "codex", design,
+        maybe_stage(slug, "design-review", "codex", design,
               f"You are Codex, independent design critic before implementation. "
               f"Read {shared}/UX_DESIGN.md and DESIGN.md. Critically inspect interaction model, "
               "discoverability, transitions, reachability, destructive actions, native iOS/Android "
@@ -272,7 +302,7 @@ def run_pipeline(slug):
               f"Write {shared}/DESIGN_REVIEW.md with P0/P1 and actionable recommendations "
               "and a clear decision (approved / changes required). "
               "Do not implement apps or change UX_DESIGN.md. Do NOT commit or push.")
-        stage(slug, "design-revise", "claude", design,
+        maybe_stage(slug, "design-revise", "claude", design,
               f"You are Claude, design owner. Read {shared}/DESIGN_REVIEW.md (independent "
               f"critique by Codex) and {shared}/UX_DESIGN.md. Update UX_DESIGN.md to address "
               "P0 issues, resolve missing states and platform inconsistencies, and clearly "
@@ -284,7 +314,7 @@ def run_pipeline(slug):
         # Both platforms are independently implemented by the SAME designated coder.
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             futures = {
-                pool.submit(stage, slug, f"build-{plat}", "codex", root / plat,
+                pool.submit(maybe_stage, slug, f"build-{plat}", "codex", root / plat,
                             platform_prompt(slug, plat)): plat
                 for plat in ("ios", "android")
             }
@@ -301,7 +331,7 @@ def run_pipeline(slug):
         # Claude reviews BOTH codebases, independently, without editing implementation.
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             futures = {
-                pool.submit(stage, slug, f"review-{plat}", "claude", root / plat,
+                pool.submit(maybe_stage, slug, f"review-{plat}", "claude", root / plat,
                             code_review_prompt(slug, plat), readonly=True,
                             report=root / plat / shared / plat / "CLAUDE_REVIEW.md"): plat
                 for plat in ("ios", "android")
@@ -318,7 +348,7 @@ def run_pipeline(slug):
         # Close the loop: coder addresses the review on each native codebase.
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             futures = {
-                pool.submit(stage, slug, f"fix-{plat}", "codex", root / plat,
+                pool.submit(maybe_stage, slug, f"fix-{plat}", "codex", root / plat,
                             f"Read {shared}/{plat}/CLAUDE_REVIEW.md (Claude's independent code review), "
                             f"and {shared}/UX_DESIGN.md (Claude design). Resolve P0/P1 issues "
                             "within your platform only; critically check UX against the design, "
