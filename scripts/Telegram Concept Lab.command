@@ -20,7 +20,7 @@ if [[ "${1:-}" == "--status" ]]; then show_status; exit 0; fi
 if [[ "${1:-}" == "--doctor" ]]; then python3 "$ROOT/lab.py" doctor; exit 0; fi
 
 CHOICE=$(/usr/bin/osascript <<'APPLESCRIPT'
-set actions to {"Новый концепт — Codex iOS + Claude Android", "Статус запусков", "Создать черновые PR из готовых сборок", "Открыть готовый iOS-прототип", "Открыть готовый Android-прототип", "GitHub: задачи и PR", "Paperclip: управление"}
+set actions to {"Новый концепт — Claude дизайн + Codex код + взаимное ревью", "Статус запусков", "Создать черновые PR из готовых сборок", "Открыть готовый iOS-прототип", "Открыть готовый Android-прототип", "GitHub: задачи и PR", "Paperclip: управление"}
 set selection to choose from list actions with title "Telegram Concept Lab" with prompt "Что делаем?" default items {item 1 of actions} without multiple selections allowed
 if selection is false then
     return "cancel"
@@ -47,7 +47,7 @@ APPLESCRIPT
     fi
     APPROVE=$(/usr/bin/osascript <<'APPLESCRIPT'
 try
-    set reply to display dialog "Текст идеи и код будут размещены в ПУБЛИЧНОМ GitHub-репозитории. Не включай приватную информацию, токены или корпоративные материалы. Запустить Codex и Claude одновременно?" with title "Подтвердить публикацию" buttons {"Отмена", "Запустить"} default button "Отмена" with icon caution
+    set reply to display dialog "Текст идеи и код будут размещены в ПУБЛИЧНОМ GitHub-репозитории. Не включай приватную информацию, токены или корпоративные материалы. Запустить этапы: Claude дизайн → Codex UX-ревью → Codex обе платформы → Claude ревью кода → Codex исправления?" with title "Подтвердить публикацию" buttons {"Отмена", "Запустить"} default button "Отмена" with icon caution
     return button returned of reply
 on error number -128
     return "Отмена"
@@ -60,7 +60,7 @@ APPLESCRIPT
     python3 "$ROOT/lab.py" new "$SLUG" "$PROMPT"
     STATUS=$?
     if [[ "$STATUS" -eq 0 ]]; then
-      message_dialog "Создан $SLUG. Codex и Claude запущены. Для прогресса открой этот ярлык снова → Статус запусков."
+      message_dialog "Создан $SLUG. Запущен совместный процесс: Claude UX, Codex iOS+Android, Claude code review, Codex fixes. Для прогресса открой ярлык снова → Статус запусков."
       show_status
     else
       message_dialog "Запуск завершился с ошибкой. Открой Terminal и проверь вывод."

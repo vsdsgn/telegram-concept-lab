@@ -8,17 +8,19 @@ On your Mac, run:
 
 ```bash
 cd ~/Projects/telegram-concept-lab
-python3 lab.py new multi-action-swipe "Swipe a chat row to reveal configurable reply, archive and pin actions with spring physics."
+python3 lab.py new animated-swipe-demo "Swipe a chat row to reveal configurable reply, archive and pin actions with spring physics."
 python3 lab.py status
 ```
 
-This starts **Codex on iOS (Swift/UIKit)** and **Claude on Android (Kotlin/Views)** simultaneously, each in an isolated Git worktree and feature branch. You can reverse assignments with `--swap`, or create a new iteration with a new concept slug. The command prints job IDs and log locations. Each agent builds/tests on the local Mac where simulators are installed.
+This starts a role-based pipeline (NOT one model per platform): **Claude designs both → Codex reviews design → Claude resolves feedback → Codex implements iOS and Android in parallel independent worktrees → Claude independently code-reviews both → Codex fixes both**. The work runs on the Mac, where simulators are installed. Legacy one-model-per-platform runs are retained read-only in existing worktrees; new concepts use the collaborative workflow.
 
 ```bash
 python3 lab.py status
+python3 lab.py workflow
+python3 lab.py logs animated-swipe-demo pipeline
 python3 lab.py logs multi-action-swipe ios
 python3 lab.py logs multi-action-swipe android
-python3 lab.py prs multi-action-swipe
+python3 lab.py prs animated-swipe-demo
 ```
 
 `prs` creates **draft GitHub PRs** for the completed, committed branches; review before merging. Worktree outputs and logs stay local and ignored. The CLI is a thin launcher, **not another persistent AI orchestrator**. Integrate with existing Paperclip via a command runner once its authenticated adapter is verified.
@@ -27,8 +29,8 @@ python3 lab.py prs multi-action-swipe
 
 - Code and runnable demos, not exported animation videos.
 - Two native codebases, one shared behavior contract and acceptance criteria.
-- Only the repository is public; prompts, runs and logs are local.
-- No auto-merge, no unattended paid tool installation or publishing.
+- The repository is PUBLIC, including original concept prompts inside SPEC.md and both native implementations. Execution logs and local run state stay private on the Mac.
+- No auto-merge, no unattended paid tool installation or publishing. Review stages are real model invocations, not a written claim of verification.
 - Do not claim actual Telegram integration unless tested in official Telegram codebase.
 - Review each platform and parity before publishing a demo.
 

@@ -53,68 +53,10 @@ def save(jobs):
     (STATE / "jobs.json").write_text(json.dumps(jobs, indent=2))
 
 def new(slug, prompt, swap=False):
-    slug = valid_slug(slug)
-    if slug in registry() or (CONCEPTS / slug).exists():
-        raise SystemExit("Concept exists; choose a new slug for another run.")
-    if run(["git", "status", "--porcelain"]).stdout.strip():
-        raise SystemExit("Commit existing changes first (git status is dirty).")
-    spec = CONCEPTS / slug / "SPEC.md"
-    spec.parent.mkdir(parents=True, exist_ok=True)
-    spec.write_text(
-        f"# {slug}\n\n## User prompt\n{prompt}\n\n"
-        "## Shared behavior contract\n"
-        "Implement functionally equivalent interactions on iOS and Android. "
-        "Define gesture states, completion/cancellation, accessible alternatives, and realistic animation. "
-        "No invented Telegram APIs. Independent runnable app is allowed.\n\n"
-        "## Acceptance\n- Native runnable demo on iOS and Android\n"
-        "- Build commands and results documented\n- Screenshots/video instructions\n"
-        "- No secret or private data\n"
-    )
-    run(["git", "add", f"concepts/{slug}/SPEC.md"])
-    run(["git", "commit", "-m", f"spec: {slug} shared behavior contract"])
-    run(["git", "push", "origin", "main"])
-    jobs = registry()
-    stamp = dt.datetime.now(dt.timezone.utc).isoformat()
-    jobs[slug] = {"created_at": stamp, "platforms": {}}
-    for platform, agent in [
-        ("ios", "claude" if swap else "codex"),
-        ("android", "codex" if swap else "claude"),
-    ]:
-        branch = f"concept/{slug}/{platform}"
-        worktree = STATE / "worktrees" / slug / platform
-        worktree.parent.mkdir(parents=True, exist_ok=True)
-        run(["git", "worktree", "add", "-b", branch, str(worktree), "main"])
-        log = STATE / "logs" / slug / f"{platform}.log"
-        log.parent.mkdir(parents=True, exist_ok=True)
-        instruction = (
-            f"Implement the {platform.upper()} part of concept '{slug}'. "
-            f"First read AGENTS.md, DESIGN.md and concepts/{slug}/SPEC.md. "
-            f"Work ONLY in concepts/{slug}/{platform}/; create a standalone runnable native project "
-            "and README with setup, build, run and test proof. "
-            "Use installed Xcode/Simulator for iOS or Android Studio SDK/emulator for Android. "
-            "Install only free missing dependencies necessary for build, no system-wide destructive changes. "
-            "Use mock data and explicitly label it. Keep behavior consistent with shared SPEC.md. "
-            "Do not touch the other platform. Do not push, publish, or merge. "
-            "Make a git commit when finished. Report real build command/outcome. "
-            f"Original product request: {prompt}"
-        )
-        job = {
-            "agent": agent, "branch": branch, "worktree": str(worktree),
-            "log": str(log), "started_at": stamp,
-        }
-        jobs[slug]["platforms"][platform] = job
-        save(jobs)
-        cmd = [
-            sys.executable, str(ROOT / "lab.py"), "worker",
-            slug, platform, agent, instruction,
-        ]
-        with log.open("a") as f:
-            p = subprocess.Popen(cmd, cwd=ROOT, stdout=f, stderr=subprocess.STDOUT,
-                                 stdin=subprocess.DEVNULL, start_new_session=True)
-        job["pid"] = p.pid
-        save(jobs)
-        print(f"{platform:8} {agent:6} pid={p.pid} branch={branch}")
-    print("Both workers launched. Check: python3 lab.py status")
+    if swap:
+        raise SystemExit("--swap is retired: roles are shared across BOTH platforms.")
+    import collab
+    collab.create(slug, prompt)
 
 def worker(slug, platform, agent, instruction):
     jobs = registry()
@@ -149,6 +91,10 @@ def status():
     if not jobs:
         print("No jobs yet.")
     for slug, data in jobs.items():
+        if data.get("mode") == "collaborative":
+            import collab
+            collab.print_status(slug, data)
+            continue
         print(slug)
         for platform, job in data["platforms"].items():
             marker = STATE / "logs" / slug / f"{platform}.exit"
@@ -157,6 +103,13 @@ def status():
 
 def logs(slug, platform):
     valid_slug(slug)
+    if registry().get(slug, {}).get("mode") == "collaborative":
+        allowed = {"pipeline","design","design-review","design-revise","build-ios","build-android",
+                   "review-ios","review-android","fix-ios","fix-android"}
+        if platform not in allowed: raise SystemExit(f"Use one of: {', '.join(sorted(allowed))}")
+        p = STATE / "logs" / slug / (platform + ".log")
+        print("".join(p.read_text(errors="replace").splitlines(keepends=True)[-80:]) if p.exists() else "Not started")
+        return
     job = registry().get(slug, {}).get("platforms", {}).get(platform)
     if not job:
         raise SystemExit("Job not found")
@@ -168,6 +121,10 @@ def prs(slug):
     jobs = registry().get(slug)
     if not jobs:
         raise SystemExit("Concept not found.")
+    if jobs.get("mode") == "collaborative":
+        marker = STATE / "logs" / slug / "pipeline.exit"
+        if not marker.exists() or marker.read_text().strip() != "0":
+            raise SystemExit("The design-build-review-fix pipeline is not complete; do not publish PRs yet.")
     for platform, job in jobs["platforms"].items():
         if not (STATE / "logs" / slug / f"{platform}.exit").exists():
             print(platform, "not finished; skip")
@@ -187,6 +144,8 @@ def prs(slug):
 
 def retry(slug):
     slug = valid_slug(slug)
+    if registry().get(slug, {}).get("mode") == "collaborative":
+        raise SystemExit("Collaborative run retries need stage-specific review; see logs before re-running.")
     jobs = registry()
     if slug not in jobs:
         raise SystemExit("Concept does not exist.")
@@ -226,6 +185,7 @@ def main():
     ap = argparse.ArgumentParser()
     s = ap.add_subparsers(dest="command", required=True)
     s.add_parser("doctor")
+    s.add_parser("workflow")
     n = s.add_parser("new")
     n.add_argument("slug")
     n.add_argument("prompt")
@@ -235,7 +195,9 @@ def main():
     reparse.add_argument("slug")
     l = s.add_parser("logs")
     l.add_argument("slug")
-    l.add_argument("platform", choices=["ios", "android"])
+    l.add_argument("platform", choices=["ios", "android", "pipeline", "design",
+                                         "design-review", "design-revise", "build-ios", "build-android",
+                                         "review-ios", "review-android", "fix-ios", "fix-android"])
     p = s.add_parser("prs")
     p.add_argument("slug")
     w = s.add_parser("worker", help=argparse.SUPPRESS)
@@ -246,6 +208,9 @@ def main():
     args = ap.parse_args()
     if args.command == "doctor":
         doctor()
+    elif args.command == "workflow":
+        import collab
+        collab.show_workflow()
     elif args.command == "new":
         new(args.slug, args.prompt, args.swap)
     elif args.command == "status":
