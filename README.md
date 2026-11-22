@@ -5,6 +5,16 @@
 
 # Telegram Concept Lab
 
+## Telegram TEST DC (both official clients)
+
+Both genuine official Telegram clients are configured for **Telegram Test DC**, not mock screens. Production Telegram apps and accounts remain separate.
+
+- **Android:** the `org.telegram.messenger.beta` debug variant forces Test DC on new unauthenticated sessions and locks the `Test Backend` checkbox. A dedicated fresh AVD `telegram_concept_test_dc` has 10 GB of storage, and the real APK is installed. In `Telegram Concept Lab.app`, open `Telegram · Test DC` → `Открыть Telegram · Test DC` to view it.
+- **iOS:** the isolated simulator debug app sets `testingEnvironment=true` and uses the separate persistent app-group directory `telegram-concept-lab-test-data`. The existing `--ui-test` path instead uses temporary `telegram-ui-tests-data` and intentionally wipes only that UI test directory per run. iOS build log: `~/Projects/telegram-integrations/ios-test-dc-full-bazel-build-v2.log`. The dedicated iPhone 17 simulator `Telegram Concept Lab Test DC` is accessible with `simctl`; the GUI `Simulator.app` is absent from this Mac's Xcode distribution.
+- **Login:** Test DC supports disposable `+99966XYYYY` numbers, X=1/2/3; the login code is five repetitions of X. Example: `+9996621234` → `22222`. Use different test numbers for two test participants. Never enter real account data, contacts, private conversations or passwords on Test DC.
+- **Acceptance:** Builds, installation and separate persistent test mode do not by themselves validate Reaction Wheel gesture behavior. Verify reaction drag/commit/cancel and normal fallback with real messages between two authenticated TEST accounts.
+
+
 Public, code-first Telegram UX experiments for **iOS and Android**, developed in parallel by Codex and Claude Code.
 
 ## Native Mac app (recommended)

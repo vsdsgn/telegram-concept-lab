@@ -355,17 +355,19 @@ private struct ContentView: View {
     private var officialView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Настоящие клиенты Telegram")
+                Text("Telegram · Test DC")
                     .font(.system(size: 29, weight: .bold))
                 Text("Reaction Wheel встроен в официальные исходники Telegram 13.2 (iOS) и 13.2.2 (Android). Оба официальных клиента собраны, установлены и запущены в эмуляторах iOS/Android. Жест на реальных сообщениях требует входа в Telegram.")
                     .foregroundStyle(.secondary)
+                Text("Тестовые аккаунты: +99966XYYYY; код — цифра X пять раз. Пример: +9996621234 / 22222. Не используйте личные номера или переписки.")
+                    .font(.callout).foregroundStyle(.secondary)
                 ForEach(["ios", "android"], id: \.self) { platform in
                     let directory = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/Telegram-" +
                             (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
                     let diagnostics = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/" +
-                            (platform == "ios" ? "ios-full-app-wheel-fix3" : "android-final-wheel-apk-build"))
+                            (platform == "ios" ? "ios-test-dc-full-bazel-build-v2" : "android-forced-test-dc-rebuild"))
                     let resultPath = diagnostics.appendingPathExtension("exit")
                     let result = (try? String(contentsOf: resultPath, encoding: .utf8))?
                         .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -375,7 +377,7 @@ private struct ContentView: View {
                                 .font(.headline)
                             Spacer()
                             if result == "0" {
-                                StatusTag(text: platform == "ios" ? "Полная iOS-сборка · OK" : "Реальный APK · OK", color: .green)
+                                StatusTag(text: platform == "ios" ? "iOS Test DC · сборка OK" : "Android Test DC · APK OK", color: .green)
                             } else if result != nil {
                                 StatusTag(text: "Сборка / тест заблокирован", color: .red)
                             } else {
@@ -406,27 +408,27 @@ private struct ContentView: View {
                                 Button("Запустить Telegram iOS") {
                                     let simctl = Process()
                                     simctl.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-                                    simctl.arguments = ["simctl", "launch", "F8BC5BDB-3116-48EF-9CB7-565749818737", "ph.telegra.Telegraph"]
+                                    simctl.arguments = ["simctl", "launch", "F6A284E2-B69E-466B-9C29-00C8D9B2DAD0", "ph.telegra.Telegraph"]
                                     try? simctl.run()
                                 }
                                 Button("Открыть скриншот") {
                                     let image = FileManager.default.homeDirectoryForCurrentUser
-                                        .appendingPathComponent("Projects/telegram-integrations/ios-real-telegram-on-simulator-after-start.png")
+                                        .appendingPathComponent("Projects/telegram-integrations/ios-fresh-test-dc-screen.png")
                                     NSWorkspace.shared.open(image)
                                 }
                                 Button("Найти IPA") {
                                     NSWorkspace.shared.activateFileViewerSelecting([directory.appendingPathComponent("bazel-bin/Telegram/Telegram.ipa")])
                                 }
                             }
-                            Text("Telegram 13.2 установлен и запущен через simctl на iPhone 17 / iOS 26.1. Графический Simulator.app в установленном Xcode отсутствует; жест в настоящем чате пока не подтверждён.")
+                            Text("iPhone 17 / iOS 26.1 · постоянное отдельное хранилище Test DC. Графического Simulator.app в Xcode нет; тест жеста в реальном чате ещё не выполнен.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if platform == "android" {
                             HStack(spacing: 12) {
-                                Button("Открыть Telegram Beta") {
+                                Button("Открыть Telegram · Test DC") {
                                     let viewer = Process()
                                     viewer.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/scrcpy")
-                                    viewer.arguments = ["-s", "emulator-5554", "--no-audio", "--max-size=900", "--window-title=Telegram Beta · Reaction Wheel"]
+                                    viewer.arguments = ["-s", "emulator-5554", "--no-audio", "--max-size=900", "--window-title=Telegram Concept Lab · TEST DC"]
                                     var env = ProcessInfo.processInfo.environment
                                     env["PATH"] = FileManager.default.homeDirectoryForCurrentUser
                                         .appendingPathComponent("Library/Android/sdk/platform-tools").path + ":" + (env["PATH"] ?? "")
@@ -438,7 +440,7 @@ private struct ContentView: View {
                                     NSWorkspace.shared.activateFileViewerSelecting([apk])
                                 }
                             }
-                            Text("Оригинальный Telegram Beta уже установлен. Для проверки жеста нужен вход в аккаунт; тест на реальных сообщениях не завершён.")
+                            Text("Отдельный чистый Android-эмулятор telegram_concept_test_dc; Test Backend принудительно включён в debug Beta. Для проверки жеста нужен тестовый аккаунт.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if platform == "android" {
