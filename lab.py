@@ -24,6 +24,7 @@ def valid_slug(s):
     return s
 
 def doctor():
+    missing = []
     checks = {
         "git": ["git", "--version"],
         "github": ["gh", "auth", "status"],
@@ -33,19 +34,29 @@ def doctor():
     }
     for name, cmd in checks.items():
         try:
-            r = run(cmd, check=False)
-            print(f"{name:12} {'OK' if r.returncode == 0 else 'CHECK'}")
-        except FileNotFoundError:
-            print(f"{name:12} MISSING")
-    for name, p in {
+            result = run(cmd, check=False)
+            okay = result.returncode == 0
+        except (FileNotFoundError, OSError):
+            okay = False
+        print(f"{name:16} {'OK' if okay else 'MISSING OR UNAUTHENTICATED'}")
+        if not okay:
+            missing.append(name)
+    for name, path in {
         "android sdk": Path.home() / "Library/Android/sdk",
         "adb": Path.home() / "Library/Android/sdk/platform-tools/adb",
         "emulator": Path.home() / "Library/Android/sdk/emulator/emulator",
         "Android Studio": Path("/Applications/Android Studio.app"),
         "JDK 17": Path("/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/java"),
         "isolated Codex": Path.home() / ".local/share/telegram-concept-lab/codex-home/config.toml",
+        "Concept Lab.app": Path.home() / "Applications/Telegram Concept Lab.app",
     }.items():
-        print(f"{name:12} {'OK' if p.exists() else 'MISSING'}")
+        okay = path.exists()
+        print(f"{name:16} {'OK' if okay else 'MISSING'}")
+        if not okay:
+            missing.append(name)
+    if missing:
+        raise SystemExit("Prerequisites missing: " + ", ".join(missing))
+
 
 def registry():
     STATE.mkdir(exist_ok=True)
