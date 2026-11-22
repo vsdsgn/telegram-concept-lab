@@ -16,6 +16,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import java.util.Locale
 import kotlin.math.*
 
@@ -47,8 +48,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        reduceMotionOverride = savedInstanceState?.getBoolean("reduceMotion") ?: false
+        haptics = savedInstanceState?.getBoolean("haptics") ?: true
+        debug = savedInstanceState?.getBoolean("debug") ?: false
+        savedInstanceState?.getIntArray("reactions")?.forEachIndexed { index, value -> messages.getOrNull(index)?.reaction = value.takeIf { it >= 0 } }
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !isNight(); isAppearanceLightNavigationBars = !isNight()
+        }
         buildUi()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("reduceMotion", reduceMotionOverride); outState.putBoolean("haptics", haptics); outState.putBoolean("debug", debug)
+        outState.putIntArray("reactions", messages.map { it.reaction ?: -1 }.toIntArray())
+        super.onSaveInstanceState(outState)
     }
 
     private fun buildUi() {
@@ -69,7 +83,8 @@ class MainActivity : AppCompatActivity() {
             val view = MessageView(this, message, index).also { messageViews += it }
             list.addView(view, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(if (index > 0 && messages[index-1].sender == message.sender) 4 else 10) })
         }
-        overlay = WheelOverlay(this).apply { visibility = View.GONE }
+        // INVISIBLE children are measured, so the first held open has valid bounds.
+        overlay = WheelOverlay(this).apply { visibility = View.INVISIBLE }
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
@@ -90,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         private val bubble: LinearLayout
         private var chip: Button? = null
         init {
-            orientation = VERTICAL; gravity = if (data.outgoing) Gravity.END else Gravity.START; id = resources.getIdentifier("chat_message_${index}", "id", packageName)
+            orientation = VERTICAL; gravity = if (data.outgoing) Gravity.END else Gravity.START; id = messageIds[index]
             bubble = LinearLayout(context).apply {
                 orientation = VERTICAL; isFocusable = true; isClickable = true; isLongClickable = true; setPadding(dp(12), dp(8), dp(12), dp(7)); background = rounded(if (data.outgoing) color(R.color.bubble_out) else color(R.color.bubble_in), 18f)
                 addView(TextView(context).apply { text = data.text; textSize = 16f; setTextColor(color(R.color.text_primary)) })
@@ -116,14 +131,14 @@ class MainActivity : AppCompatActivity() {
             addView(bubble, LayoutParams(-2, -2).apply { width = (resources.displayMetrics.widthPixels * .78f).toInt() })
             refresh()
         }
-        fun description(): String { val r = data.reaction?.let { localizedName(it) }; return "${data.sender}, message, ${data.text}, ${data.time}. ${r?.let { "Your reaction: $it" } ?: "No reaction"}" }
+        fun description(): String { val r = data.reaction?.let { localizedName(it) }; return getString(R.string.message_description,data.sender,data.text,data.time,r?.let{getString(R.string.your_reaction,it)}?:getString(R.string.no_reaction)) }
         fun refresh() {
             bubble.contentDescription = description()
             chip?.let { removeView(it) }; chip = null
             data.reaction?.let { value ->
                 chip = Button(context).apply {
                     text = "${Reactions.all[value].glyph}  1"; textSize = 14f; isAllCaps = false; minHeight = dp(48); minimumHeight = dp(48); setPadding(dp(8), 0, dp(8), 0)
-                    background = rounded(color(R.color.chip_mine), 14f); contentDescription = "Remove ${localizedName(value)} reaction"
+                    background = rounded(color(R.color.chip_mine), 14f); contentDescription = getString(R.string.your_reaction,localizedName(value)); tooltipText=getString(R.string.remove_named_reaction,localizedName(value))
                     setOnClickListener { removeReaction(this@MessageView) }
                 }
                 addView(chip, LayoutParams(-2, dp(48)).apply { topMargin = dp(2) })
@@ -134,45 +149,54 @@ class MainActivity : AppCompatActivity() {
 
     private var pending: Runnable? = null
     private var activeMessage: MessageView? = null
+    private var activeHeld = false
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private var downX = 0f; private var downY = 0f; private val handler = Handler(Looper.getMainLooper())
     private val slop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
 
     private fun handleBubbleTouch(message: MessageView, event: MotionEvent): Boolean {
-        val loc = IntArray(2); root.getLocationOnScreen(loc); val x = event.rawX-loc[0]; val y = event.rawY-loc[1]
+        fun point(index: Int): Pair<Float,Float> {
+            val rootLoc=IntArray(2);root.getLocationOnScreen(rootLoc)
+            val rawOffsetX=event.rawX-event.x;val rawOffsetY=event.rawY-event.y
+            return event.getX(index)+rawOffsetX-rootLoc[0] to event.getY(index)+rawOffsetY-rootLoc[1]
+        }
+        val pointerIndex = event.findPointerIndex(activePointerId).takeIf { it >= 0 } ?: 0
+        val (x,y)=point(pointerIndex)
         when(event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { activeMessage = message; downX=x; downY=y; pending?.let(handler::removeCallbacks); pending = Runnable { if (activeMessage === message) openHeld(message, downX, downY) }.also { handler.postDelayed(it, 350) }; handler.postDelayed({ if (activeMessage === message && overlay.visibility != View.VISIBLE) message.scaleX=.98f.also { message.scaleY=.98f } },100); return true }
+            MotionEvent.ACTION_DOWN -> { overlay.fastForwardDismiss(); activeHeld=false;activePointerId=event.getPointerId(0);activeMessage = message; downX=x; downY=y; pending?.let(handler::removeCallbacks); pending = Runnable { if (activeMessage === message) openHeld(message, downX, downY) }.also { handler.postDelayed(it, 350) }; handler.postDelayed({ if (activeMessage === message && !activeHeld) message.scaleX=.98f.also { message.scaleY=.98f } },100); return true }
             MotionEvent.ACTION_MOVE -> {
-                if (overlay.visibility == View.VISIBLE) { overlay.track(x,y); return true }
+                if (activeHeld) { overlay.track(x,y); return true }
                 if (hypot(x-downX,y-downY)>slop) { cancelPending(message); message.parent?.requestDisallowInterceptTouchEvent(false); return false }
             }
-            MotionEvent.ACTION_UP -> { if (overlay.visibility == View.VISIBLE) overlay.finish(x,y) else cancelPending(message); return true }
-            MotionEvent.ACTION_CANCEL -> { if (overlay.visibility == View.VISIBLE) overlay.cancelWheel() else cancelPending(message); return false }
+            MotionEvent.ACTION_UP -> { if (activeHeld) overlay.finish(x,y) else cancelPending(message);activePointerId=MotionEvent.INVALID_POINTER_ID; return true }
+            MotionEvent.ACTION_POINTER_UP -> if(event.getPointerId(event.actionIndex)==activePointerId){val p=point(event.actionIndex);if(activeHeld)overlay.finish(p.first,p.second)else cancelPending(message);activePointerId=MotionEvent.INVALID_POINTER_ID;return true}
+            MotionEvent.ACTION_CANCEL -> { if (activeHeld) overlay.cancelWheel() else cancelPending(message);activePointerId=MotionEvent.INVALID_POINTER_ID; return false }
             MotionEvent.ACTION_POINTER_DOWN -> return true
         }
         return true
     }
     private fun cancelPending(message: MessageView) { pending?.let(handler::removeCallbacks); pending=null; activeMessage=null; message.animate().scaleX(1f).scaleY(1f).setDuration(if(reducedMotion())0 else 120).start() }
-    private fun openHeld(message: MessageView, x: Float, y: Float) { pending=null; message.parent?.requestDisallowInterceptTouchEvent(true); scroll.isEnabled=false; message.scaleX=1f; message.scaleY=1f; overlay.open(message,x,y,false) }
+    private fun openHeld(message: MessageView, x: Float, y: Float) { pending=null; message.parent?.requestDisallowInterceptTouchEvent(true); message.scaleX=1f; message.scaleY=1f; activeHeld=overlay.open(message,x,y);if(!activeHeld){message.parent?.requestDisallowInterceptTouchEvent(false);showPicker(message)} }
 
     private fun openPersistent(message: MessageView) { cancelPending(message); showPicker(message) }
     private fun showPicker(message: MessageView) {
         val dialog = Dialog(this).apply { setTitle(getString(R.string.choose)); window?.setDimAmount(.45f) }
         val panel = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(16),dp(12),dp(16),dp(16)); background=rounded(color(R.color.bubble_in),24f) }
         panel.addView(TextView(this).apply { text=getString(R.string.choose); textSize=20f; setTypeface(typeface,1); setTextColor(color(R.color.text_primary)); setPadding(dp(8),0,0,dp(8)) })
-        Reactions.all.forEachIndexed { i,r -> panel.addView(Button(this).apply { id=resources.getIdentifier("compact_item_$i","id",packageName); text="${r.glyph}  ${localizedName(i)}"; isAllCaps=false; textSize=16f; minHeight=dp(48); contentDescription="${localizedName(i)}, ${i+1} of 6${if(message.data.reaction==i) ", selected. Remove ${localizedName(i)} reaction" else ""}"; setOnClickListener { dialog.dismiss(); commit(message,i) } }, LinearLayout.LayoutParams(-1,dp(52)).apply { bottomMargin=dp(4) }) }
+        Reactions.all.forEachIndexed { i,r -> panel.addView(Button(this).apply { id=compactIds[i]; text="${r.glyph}  ${localizedName(i)}"; isAllCaps=false; textSize=16f; minHeight=dp(48); contentDescription=getString(if(message.data.reaction==i)R.string.compact_selected_description else R.string.compact_description,localizedName(i),i+1); setOnClickListener { dialog.dismiss(); commit(message,i) } }, LinearLayout.LayoutParams(-1,dp(52)).apply { bottomMargin=dp(4) }) }
         panel.addView(Button(this).apply { text=getString(R.string.close); contentDescription=getString(R.string.close); isAllCaps=false; setOnClickListener { dialog.dismiss() } }, LinearLayout.LayoutParams(-1,dp(48)))
         val scroller=ScrollView(this).apply { addView(panel); accessibilityPaneTitle=getString(R.string.reaction_wheel) }
-        dialog.setContentView(scroller); dialog.setOnDismissListener { message.requestFocus(); message.announceForAccessibility(descriptionFor(message)) }; dialog.setOnShowListener { dialog.window?.setLayout(min(dp(340),resources.displayMetrics.widthPixels-dp(24)),-2); panel.getChildAt(1).requestFocus(); panel.announceForAccessibility(getString(R.string.reaction_wheel)) }; dialog.show()
+        dialog.setContentView(scroller); dialog.setOnDismissListener { message.requestFocus() }; dialog.setOnShowListener { dialog.window?.setLayout(min(dp(340),resources.displayMetrics.widthPixels-dp(24)),-2); panel.getChildAt(1).requestFocus() }; dialog.show()
     }
 
     private fun commit(message: MessageView, reaction: Int) {
         val old=message.data.reaction
         if(old==reaction) { removeReaction(message); return }
-        message.data.reaction=reaction; message.refresh(); haptic(message, if(Build.VERSION.SDK_INT>=30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY)
-        val announcement=if(old==null) "Reacted with ${localizedName(reaction)}" else "Reaction changed to ${localizedName(reaction)}"
+        message.data.reaction=reaction; message.refresh(); haptic(message, if(Build.VERSION.SDK_INT>=30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.KEYBOARD_TAP)
+        val announcement=getString(if(old==null)R.string.reacted_with else R.string.reaction_changed_to,localizedName(reaction))
         message.announceForAccessibility(announcement); message.requestFocus()
     }
-    private fun removeReaction(message: MessageView) { if(message.data.reaction==null)return; message.data.reaction=null; message.refresh(); haptic(message,if(Build.VERSION.SDK_INT>=30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY); message.announceForAccessibility("Reaction removed"); message.requestFocus() }
+    private fun removeReaction(message: MessageView) { if(message.data.reaction==null)return; message.data.reaction=null; message.refresh(); haptic(message,if(Build.VERSION.SDK_INT>=30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.KEYBOARD_TAP); message.announceForAccessibility(getString(R.string.reaction_removed)); message.requestFocus() }
     private fun descriptionFor(message: MessageView)=message.description()
 
     private fun showSettings() {
@@ -182,25 +206,24 @@ class MainActivity : AppCompatActivity() {
         box.addView(toggle(R.string.reduce_motion,reduceMotionOverride){reduceMotionOverride=it})
         box.addView(toggle(R.string.haptics,haptics){haptics=it})
         box.addView(toggle(R.string.debug,debug){debug=it;overlay.invalidate()})
-        box.addView(Button(this).apply { text=getString(R.string.reset); isAllCaps=false; minHeight=dp(48); setOnClickListener { android.app.AlertDialog.Builder(this@MainActivity).setMessage("Reset all mock reactions?").setNegativeButton(android.R.string.cancel,null).setPositiveButton(android.R.string.ok){_,_->messages.forEach{it.reaction=null};messageViews.forEach{it.refresh()}}.show() } })
+        box.addView(Button(this).apply { text=getString(R.string.reset); isAllCaps=false; minHeight=dp(48); setOnClickListener { android.app.AlertDialog.Builder(this@MainActivity).setMessage(R.string.reset_confirm).setNegativeButton(android.R.string.cancel,null).setPositiveButton(android.R.string.ok){_,_->messages.forEach{it.reaction=null};messageViews.forEach{it.refresh()}}.show() } })
         android.app.AlertDialog.Builder(this).setTitle(R.string.settings).setView(box).setPositiveButton(R.string.close,null).show()
     }
 
     inner class WheelOverlay(context: Context): View(context) {
         private val state=WheelStateMachine(); private var message:MessageView?=null; private var ax=0f;private var ay=0f;private var cx=0f;private var cy=0f;private var axis=0.0
         private var centersPx=emptyList<Pair<Float,Float>>(); private var centersDp=emptyList<Pair<Float,Float>>(); private val paint=Paint(3); private var lastTick=0L
-        fun open(m:MessageView,x:Float,y:Float,persistent:Boolean) { message=m;ax=x;ay=y; val placement=place(x,y);cx=placement.first;cy=placement.second;axis=placement.third; computeCenters();state.open();visibility=VISIBLE;alpha=if(reducedMotion())0f else 1f;if(reducedMotion())animate().alpha(1f).setDuration(100).start();haptic(this,HapticFeedbackConstants.LONG_PRESS);invalidate() }
-        private fun place(x:Float,y:Float):Triple<Float,Float,Double> { val margin=dp(52).toFloat(); val radius=dp(108).toFloat(); val candidates=listOf(0.0,Math.PI,Math.PI/2,Math.PI*3/2,Math.PI*3/4,Math.PI*5/4,Math.PI/4,Math.PI*7/4); candidates.forEach { a-> val pts=itemCenters(x,y,a,radius); if(pts.all{it.first in margin..width-margin && it.second in margin..height-margin})return Triple(x,y,a) }; return Triple(x.coerceIn(margin,width-margin),y.coerceIn(margin,height-margin),0.0) }
-        private fun itemCenters(x:Float,y:Float,a:Double,r:Float)=List(6){i->val angle=a+Math.toRadians(-90.0+36.0*i);Pair(x+sin(angle).toFloat()*r,y-cos(angle).toFloat()*r)}
-        private fun computeCenters(){centersPx=itemCenters(cx,cy,axis,dp(108).toFloat());centersDp=centersPx.map{Pair(it.first/density,it.second/density)}}
+        private var motionReduced=false;private var uiScale=1f
+        fun open(m:MessageView,x:Float,y:Float):Boolean { fastForwardDismiss();message=m;ax=x;ay=y;motionReduced=reducedMotion();uiScale=resources.configuration.fontScale.coerceIn(1f,1.3f);val insets=ViewCompat.getRootWindowInsets(root)?.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.systemGestures())?:androidx.core.graphics.Insets.NONE;val p=WheelGeometry.compute(SafeBounds(insets.left/density,insets.top/density,(root.width-insets.right)/density,(root.height-insets.bottom)/density),x/density,y/density,uiScale,layoutDirection==View.LAYOUT_DIRECTION_RTL)?:return false;cx=p.centerX*density;cy=p.centerY*density;axis=Math.toRadians(p.axisDegrees.toDouble());centersPx=p.centers.map{it.first*density to it.second*density};centersDp=p.centers;state.open();visibility=VISIBLE;alpha=if(motionReduced)0f else 1f;if(motionReduced)animate().alpha(1f).setDuration(100).start();haptic(this,HapticFeedbackConstants.LONG_PRESS);invalidate();return true }
         fun track(x:Float,y:Float){val before=state.selected;state.move(ax/density,ay/density,x/density,y/density,centersDp);if(state.selected>=0&&state.selected!=before&&SystemClock.uptimeMillis()-lastTick>=85){haptic(this,if(Build.VERSION.SDK_INT>=34)HapticFeedbackConstants.SEGMENT_FREQUENT_TICK else HapticFeedbackConstants.CLOCK_TICK);lastTick=SystemClock.uptimeMillis()};invalidate()}
         fun finish(x:Float,y:Float){val chosen=state.release(ax/density,ay/density,x/density,y/density,centersDp); val target=message;dismiss();if(chosen!=null&&target!=null)commit(target,chosen)}
         fun cancelWheel(){state.cancel();dismiss()}
-        private fun dismiss(){animate().cancel(); if(reducedMotion()){alpha=0f;end()}else animate().alpha(0f).setDuration(160).withEndAction{end()}.start()}
-        private fun end(){visibility=GONE;alpha=1f;scroll.isEnabled=true;activeMessage=null;root.requestDisallowInterceptTouchEvent(false);message?.requestFocus()}
-        override fun onDraw(c:Canvas){super.onDraw(c);paint.color=ColorUtils.setAlphaComponent(Color.BLACK,if(isNight())140 else 72);c.drawRect(0f,0f,width.toFloat(),height.toFloat(),paint);paint.style=Paint.Style.STROKE;paint.strokeWidth=dp(64).toFloat();paint.strokeCap=Paint.Cap.ROUND;paint.color=if(isNight())Color.rgb(35,44,54) else Color.WHITE;c.drawArc(cx-dp(108),cy-dp(108),cx+dp(108),cy+dp(108),(-180+Math.toDegrees(axis)).toFloat(),180f,false,paint);paint.style=Paint.Style.FILL
-            centersPx.forEachIndexed{i,p->val selected=i==state.selected;val s=if(reducedMotion())1f else if(selected)1.4f else if(state.selected>=0).9f else 1f;paint.color=if(selected)color(R.color.chip_mine) else if(isNight())Color.rgb(35,44,54) else Color.WHITE;c.drawCircle(p.first,p.second,dp(24)*s,paint);paint.textAlign=Paint.Align.CENTER;paint.textSize=dp(28)*s;c.drawText(Reactions.all[i].glyph,p.first,p.second+paint.textSize*.35f,paint);if(selected&&message?.data?.reaction==i){paint.color=color(R.color.accent);paint.textSize=dp(16).toFloat();c.drawText("−",p.first+dp(22),p.second-dp(20),paint)}}
-            val label=when{state.state==WheelStateMachine.State.SELECTED&&state.selected>=0->if(message?.data?.reaction==state.selected)"Remove ${localizedName(state.selected)}" else localizedName(state.selected);state.state==WheelStateMachine.State.OUTSIDE->getString(R.string.release_cancel);else->getString(R.string.slide_choose)};paint.textSize=dp(13).toFloat();paint.typeface=Typeface.DEFAULT_BOLD;val w=paint.measureText(label)+dp(24);val ly=(cy+dp(54)).coerceAtMost(height-dp(28).toFloat());paint.color=if(isNight())Color.argb(235,242,245,247) else Color.argb(225,17,20,24);c.drawRoundRect(cx-w/2,ly-dp(16),cx+w/2,ly+dp(16),dp(16).toFloat(),dp(16).toFloat(),paint);paint.color=if(isNight())Color.rgb(17,20,24) else Color.WHITE;c.drawText(label,cx,ly+dp(5),paint)
+        private fun dismiss(){activeHeld=false;animate().cancel();animate().alpha(0f).setDuration(if(motionReduced)100 else 160).withEndAction{end()}.start()}
+        fun fastForwardDismiss(){if(visibility==VISIBLE&&!activeHeld){animate().cancel();end()}}
+        private fun end(){visibility=INVISIBLE;alpha=1f;activeHeld=false;activeMessage=null;root.parent?.requestDisallowInterceptTouchEvent(false);message?.requestFocus()}
+        override fun onDraw(c:Canvas){super.onDraw(c);paint.color=ColorUtils.setAlphaComponent(Color.BLACK,if(isNight())140 else 72);c.drawRect(0f,0f,width.toFloat(),height.toFloat(),paint);val dim=if(state.state==WheelStateMachine.State.OUTSIDE).6f else 1f;paint.style=Paint.Style.STROKE;paint.strokeWidth=dp(64).toFloat()*uiScale;paint.strokeCap=Paint.Cap.ROUND;paint.color=ColorUtils.setAlphaComponent(if(isNight())Color.rgb(35,44,54) else Color.WHITE,(255*dim).toInt());val radius=dp(108)*uiScale;c.drawArc(cx-radius,cy-radius,cx+radius,cy+radius,(-180+Math.toDegrees(axis)).toFloat(),180f,false,paint);paint.style=Paint.Style.FILL
+            centersPx.forEachIndexed{i,p->val selected=i==state.selected;val s=if(motionReduced)1f else if(selected)1.4f else if(state.selected>=0).9f else 1f;paint.color=if(selected)color(R.color.chip_mine) else if(isNight())Color.rgb(35,44,54) else Color.WHITE;c.drawCircle(p.first,p.second,dp(24)*uiScale*s,paint);paint.textAlign=Paint.Align.CENTER;paint.textSize=dp(28)*uiScale*s;c.drawText(Reactions.all[i].glyph,p.first,p.second+paint.textSize*.35f,paint);if(message?.data?.reaction==i){paint.style=Paint.Style.STROKE;paint.strokeWidth=dp(2).toFloat();paint.color=color(R.color.accent);c.drawCircle(p.first,p.second,dp(23)*uiScale*s,paint);paint.style=Paint.Style.FILL};if(selected&&message?.data?.reaction==i){paint.color=color(R.color.accent);paint.textSize=dp(16).toFloat();c.drawText("−",p.first+dp(22),p.second-dp(20),paint)}}
+            val label=when{state.state==WheelStateMachine.State.SELECTED&&state.selected>=0->if(message?.data?.reaction==state.selected)getString(R.string.remove_named,Reactions.all[state.selected].glyph) else localizedName(state.selected);state.state==WheelStateMachine.State.OUTSIDE->getString(R.string.release_cancel);else->getString(R.string.slide_choose)};paint.textSize=dp(13).toFloat()*resources.configuration.fontScale;paint.typeface=Typeface.DEFAULT_BOLD;val w=(paint.measureText(label)+dp(24)).coerceAtMost(width-dp(16).toFloat());val ly=(cy+dp(54)).coerceIn(dp(24).toFloat(),height-dp(24).toFloat());paint.color=if(isNight())Color.argb(235,242,245,247) else Color.argb(225,17,20,24);c.drawRoundRect((cx-w/2).coerceAtLeast(dp(8).toFloat()),ly-dp(16),(cx+w/2).coerceAtMost(width-dp(8).toFloat()),ly+dp(16),dp(16).toFloat(),dp(16).toFloat(),paint);paint.color=if(isNight())Color.rgb(17,20,24) else Color.WHITE;c.drawText(label,cx.coerceIn(dp(8)+w/2,width-dp(8)-w/2),ly+dp(5),paint)
             if(debug){paint.style=Paint.Style.STROKE;paint.strokeWidth=dp(1).toFloat();paint.color=Color.MAGENTA;c.drawCircle(ax,ay,dp(44).toFloat(),paint);c.drawCircle(ax,ay,dp(32).toFloat(),paint);paint.style=Paint.Style.FILL}
         }
     }
@@ -214,4 +237,6 @@ class MainActivity : AppCompatActivity() {
     private fun isNight()=resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK==Configuration.UI_MODE_NIGHT_YES
     private fun reducedMotion():Boolean { val system=runCatching{Settings.Global.getFloat(contentResolver,Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f}.getOrDefault(false);return reduceMotionOverride||system }
     private fun haptic(v:View,constant:Int){if(haptics)v.performHapticFeedback(constant)}
+    private val messageIds by lazy { intArrayOf(R.id.chat_message_0,R.id.chat_message_1,R.id.chat_message_2,R.id.chat_message_3,R.id.chat_message_4,R.id.chat_message_5,R.id.chat_message_6,R.id.chat_message_7,R.id.chat_message_8,R.id.chat_message_9,R.id.chat_message_10,R.id.chat_message_11) }
+    private val compactIds by lazy { intArrayOf(R.id.compact_item_0,R.id.compact_item_1,R.id.compact_item_2,R.id.compact_item_3,R.id.compact_item_4,R.id.compact_item_5) }
 }

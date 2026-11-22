@@ -24,7 +24,8 @@ class WheelStateMachine {
         else { selected = -1; state = if (rho >= 12f) State.OUTSIDE else State.ARMED }
     }
     fun release(anchorX: Float, anchorY: Float, x: Float, y: Float, centers: List<Pair<Float, Float>>): Int? {
-        move(anchorX, anchorY, x, y, centers)
+        // Release may validate the visible selection, but must never create a new one.
+        // Otherwise a slightly different UP coordinate can commit an item the user never saw.
         val result = selected.takeIf { state == State.SELECTED && hypot(x-anchorX,y-anchorY) >= 32f && hypot(x-centers[it].first,y-centers[it].second) <= 96f }
         state = State.IDLE; selected = -1
         return result

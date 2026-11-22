@@ -23,4 +23,12 @@ class WheelStateMachineTest {
         assertEquals(WheelStateMachine.State.OUTSIDE,s.state);assertNull(s.release(0f,0f,250f,250f,centers))
     }
     @Test fun cancelIsIdempotent() { val s=WheelStateMachine();s.open();s.cancel();s.cancel();assertEquals(WheelStateMachine.State.IDLE,s.state) }
+    @Test fun releaseCannotCreateASelection() {
+        val s=WheelStateMachine();s.open()
+        assertNull(s.release(0f,0f,0f,-60f,centers))
+    }
+    @Test fun releaseOutsideVisibleSelectionCancels() {
+        val s=WheelStateMachine();s.open();s.move(0f,0f,0f,-60f,centers)
+        assertNull(s.release(0f,0f,250f,250f,centers))
+    }
 }

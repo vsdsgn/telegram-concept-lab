@@ -30,17 +30,17 @@ The effective pre-open movement tolerance is Android's `ViewConfiguration.scaled
 Reference runtime: connected Android emulator `emulator-5554`, API 36, 432 × 2160 px, large system font scale.
 
 ```sh
-ANDROID_HOME=/Users/vsdsgn/Library/Android/sdk ./gradlew testDebugUnitTest assembleDebug --offline
+ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew testDebugUnitTest assembleDebug --offline
 ```
 
-Result: **BUILD SUCCESSFUL**; 5 tests, 0 failures, 0 skipped. The tests cover 20–30 dp diagonal drift, nearest-item capture/commit, return through the 32 dp dead zone, outside cancellation, and idempotent cancellation. APK size: 3.4 MB.
+Result after the independent-review fixes: **BUILD SUCCESSFUL**; 12 tests, 0 failures, 0 skipped. The state tests additionally prove that release cannot create a previously invisible selection and that release outside a visible selection cancels. Pure placement tests cover mid-screen/up, left-edge/right with whole-wheel translation, down-axis ordering, RTL mirroring, and 240 dp Compact fallback.
 
-Runtime result: `adb install -r …/app-debug.apk` succeeded; a cold launch returned `Status: ok`, and `MainActivity` was the top resumed activity. The light, large-font chat screen was visually inspected. An automated `adb input swipe` did not select a reaction, so gesture completion is **not** claimed from that synthetic check.
+Runtime result after the fixes: `adb install -r app/build/outputs/apk/debug/app-debug.apk` succeeded; a cold launch returned `Status: ok`. A stationary 600 ms `adb shell input swipe` exercised the first held-open path that previously used zero-sized overlay bounds. `MainActivity` remained `topResumedActivity`, and the filtered recent `AndroidRuntime` fatal log was empty. This proves the first hold no longer crashes; reaction selection is **not** claimed from that stationary synthetic gesture.
 
 Lint command attempted:
 
 ```sh
-ANDROID_HOME=/Users/vsdsgn/Library/Android/sdk ./gradlew lintDebug --offline
+ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew lintDebug --offline
 ```
 
 Result: **not run to completion** because the Gradle cache did not contain Android lint 31.11.1 artifacts and offline mode prevented download. This is an environment limitation, not a passing lint result.
@@ -58,8 +58,10 @@ Evidence obtained: automated unit/build (A) and emulator launch/visual inspectio
 
 ## Known limitations
 
-- This demo implements deterministic axis rotation and safe centre margins, but not the complete shared geometry-fixture suite or every label/close intersection invariant. Very small windows use the scrollable persistent picker; held-gesture fallback at extreme sizes is not fully automated.
+- Placement now uses window/system/cutout/gesture insets, `uiScale`, whole-wheel translation, the 96 dp held-anchor invariant, specified axis preference, LTR/RTL index ordering, and Compact fallback. The complete shared JSON fixture suite and label/close collision fit tests remain unimplemented; the current label is clamped rather than participating in placement.
 - Radial item entry is drawn immediately rather than the specified per-item spring cascade. Selection scale, cancellation fade, rate-limited haptics, Reduced Motion, and add/replace/remove state semantics are implemented. Frame pacing is unmeasured.
-- English and Russian visible UI resources are present. Result announcements currently use English reaction-result phrasing.
+- English and Russian result, removal, message-description, and reset-confirmation strings are localized.
+- Activity recreation preserves reactions and demo switches. Process-death persistence remains intentionally out of scope for mock data.
+- The lifted-message layer, tangential selection push, fly-to-chip/row animations, full settings bottom-sheet/segmented controls, pinned Compact header, and gesture-exclusion rectangles remain design-fidelity gaps. They were not P0/P1 correctness blockers in the independent review remediation order.
 - In-memory reactions reset on process death. This is intentional mock behavior.
 - Physical-device tuning of the 44/32 dp thresholds and OEM haptic behavior is still required.

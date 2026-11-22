@@ -1,3 +1,5 @@
 <resources>
     <item name="chat_list" type="id"/><item name="chat_hint" type="id"/><item name="settings_open" type="id"/>
+    <item name="chat_message_0" type="id"/><item name="chat_message_1" type="id"/><item name="chat_message_2" type="id"/><item name="chat_message_3" type="id"/><item name="chat_message_4" type="id"/><item name="chat_message_5" type="id"/><item name="chat_message_6" type="id"/><item name="chat_message_7" type="id"/><item name="chat_message_8" type="id"/><item name="chat_message_9" type="id"/><item name="chat_message_10" type="id"/><item name="chat_message_11" type="id"/>
+    <item name="compact_item_0" type="id"/><item name="compact_item_1" type="id"/><item name="compact_item_2" type="id"/><item name="compact_item_3" type="id"/><item name="compact_item_4" type="id"/><item name="compact_item_5" type="id"/>
 </resources>
