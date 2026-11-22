@@ -152,4 +152,23 @@ class CollaborativeTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "applicationId"):
                 preview.android_id(gradle)
 
+    def test_xcode27_device_hub_launch(self):
+        import preview
+        with tempfile.TemporaryDirectory() as td:
+            dev = Path(td) / "Xcode.app/Contents/Developer"
+            hub = dev.parent / "Applications/DeviceHub.app"
+            hub.mkdir(parents=True)
+            dev.mkdir()
+            fake = subprocess.CompletedProcess([], 0, stdout=str(dev) + "\n")
+            with mock.patch.object(preview, "call", return_value=fake):
+                selected_hub, selected_legacy = preview.selected_xcode_apps()
+            self.assertEqual(selected_hub, hub.resolve())
+            self.assertFalse(selected_legacy.exists())
+            with mock.patch.object(preview, "selected_xcode_apps", return_value=(hub, selected_legacy)):
+                with mock.patch.object(preview, "call") as launch:
+                    self.assertEqual(preview.reveal_ios_device("test-udid"), "Device Hub")
+                    command = launch.call_args.args[0]
+                    self.assertEqual(command[:3], ["open", "-a", hub])
+                    self.assertEqual(command[3], "devices://device/open?id=test-udid")
+
 if __name__=="__main__": unittest.main()

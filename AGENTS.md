@@ -1,7 +1,7 @@
 # Shared contract for Codex and Claude Code
 
 This repository is PUBLIC. Never commit secrets, private files, personal data, simulator caches, credentials, or agent logs. Stay inside assigned worktree.
-Purpose: high-quality, executable Telegram interaction concepts for iOS and Android.
+Purpose: standalone DEMO ONLY in this public repository, NOT Telegram. To develop the real Telegram client, use isolated worktrees of the official Telegram-iOS and DrKLO/Telegram repositories under ~/Projects/telegram-integrations. Never describe a mock as integrated Telegram.
 Each concept must be independently runnable, with README, reproducible build instructions, known limitations and demo guidance.
 One shared behavior specification lives at concepts/<slug>/SPEC.md (created in main before launching).
 Role-based collaboration, NOT platform-based ownership:

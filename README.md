@@ -1,3 +1,5 @@
+> **IMPORTANT:** Historical Concept Lab jobs are standalone mock demos, NOT modifications of Telegram. The official clients are checked out separately under `~/Projects/telegram-integrations/Telegram-iOS-reaction-wheel` and `Telegram-Android-reaction-wheel`. `lab.py new` requires `--demo` to avoid silently creating more mocks.
+
 # Telegram Concept Lab
 
 Public, code-first Telegram UX experiments for **iOS and Android**, developed in parallel by Codex and Claude Code.

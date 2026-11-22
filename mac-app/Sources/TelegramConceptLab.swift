@@ -134,7 +134,7 @@ private final class LabStore: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let slug = "concept-" + formatter.string(from: Date()) + "-" + String(UUID().uuidString.prefix(4)).lowercased()
-        execute(["new", slug, prompt]) { success in
+        execute(["new", slug, prompt, "--demo"]) { success in
             if success { done(slug) }
         }
     }
@@ -200,7 +200,8 @@ private final class LabStore: ObservableObject {
                 self.busy = false
                 self.lastResult = output.isEmpty ? "Команда завершилась без вывода." : output
                 if finished.terminationStatus != 0 {
-                    self.lastError = "Ошибка запуска (код \(finished.terminationStatus)). Подробности ниже."
+                    self.lastError = "Ошибка команды \(arguments.first ?? "?") (код \(finished.terminationStatus)):\n" +
+                        String(output.suffix(1200))
                 }
                 self.refresh()
                 completion(finished.terminationStatus == 0)
@@ -270,7 +271,7 @@ private struct StatusTag: View {
 
 private struct ContentView: View {
     @StateObject private var store = LabStore()
-    @State private var selection = "new"
+    @State private var selection = "official"
     @State private var idea = ""
     @State private var publicAgreed = false
     @State private var confirmLaunch = false
@@ -286,7 +287,9 @@ private struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                Label("Новый концепт", systemImage: "plus.circle.fill")
+                Label("Официальные исходники Telegram", systemImage: "message.fill")
+                    .tag("official")
+                Label("Standalone-мок", systemImage: "plus.circle")
                     .tag("new")
                 Section("Запуски") {
                     ForEach(store.jobs) { job in
@@ -307,7 +310,9 @@ private struct ContentView: View {
             .navigationTitle("Concept Lab")
             .navigationSplitViewColumnWidth(min: 235, ideal: 280, max: 320)
         } detail: {
-            if selection == "new" {
+            if selection == "official" {
+                officialView
+            } else if selection == "new" {
                 newConceptView
             } else if let job = selectedJob {
                 jobDetailView(job)
@@ -347,13 +352,57 @@ private struct ContentView: View {
         }
     }
 
+    private var officialView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Настоящие клиенты Telegram")
+                    .font(.system(size: 29, weight: .bold))
+                Text("Reaction Wheel интегрируется в официальные исходники Telegram 13.2 (iOS) и 13.2.2 (Android). Это НЕ прежние моки. Рабочие сборки оригинальных клиентов пока не подтверждены.")
+                    .foregroundStyle(.secondary)
+                ForEach(["ios", "android"], id: \.self) { platform in
+                    let directory = FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent("Projects/telegram-integrations/Telegram-" +
+                            (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack {
+                            Text(platform == "ios" ? "Telegram iOS · Xcode/Bazel" : "Telegram Android · Gradle")
+                                .font(.headline)
+                            Spacer()
+                            StatusTag(text: "Исходники / требует сборки", color: .orange)
+                        }
+                        Text(directory.path)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary).textSelection(.enabled)
+                        Button("Открыть исходники в Finder") {
+                            NSWorkspace.shared.open(directory)
+                        }
+                        let log = FileManager.default.homeDirectoryForCurrentUser
+                            .appendingPathComponent("Projects/telegram-integrations/" + platform + "-implementation.log")
+                        if let raw = try? String(contentsOf: log, encoding: .utf8) {
+                            Text(raw.components(separatedBy: .newlines).suffix(9).joined(separator: "\n"))
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(9)
+                        }
+                    }
+                    .padding(15)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                }
+                Text("Предыдущие Reaction Wheel PR содержат самостоятельные демо-приложения. Настоящая интеграция считается готовой только после сборки Telegram и проверки реакций на реальных сообщениях.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            .padding(28)
+            .frame(maxWidth: 950, alignment: .leading)
+        }
+        .navigationTitle("Telegram · исходники")
+    }
+
     private var newConceptView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Новый Telegram-концепт")
+                    Text("Отдельное демо — НЕ Telegram")
                         .font(.system(size: 29, weight: .bold))
-                    Text("Одна идея. Claude отвечает за UX обеих платформ, Codex — за обе реализации. Затем они проверяют работу друг друга.")
+                    Text("Этот режим создаёт standalone-мок с вымышленными сообщениями. Разработка настоящих клиентов показана в разделе «Официальные исходники Telegram» слева.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -387,7 +436,7 @@ private struct ContentView: View {
                     Button {
                         confirmLaunch = true
                     } label: {
-                        Label("Запустить Claude + Codex", systemImage: "play.fill")
+                        Label("Сделать отдельный мок", systemImage: "play.fill")
                             .fontWeight(.semibold)
                             .padding(.vertical, 5)
                     }
@@ -451,31 +500,6 @@ private struct ContentView: View {
                     }
                     Spacer()
                     StatusTag(text: job.state, color: job.color)
-                }
-
-                if job.isCollaborative {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Этапы выполнения").font(.headline)
-                        ForEach(phases) { phase in
-                            let state = store.phaseState(slug: job.slug, key: phase.key)
-                            HStack {
-                                Image(systemName: state == "готово" ? "checkmark.circle.fill" :
-                                      state == "ошибка" ? "xmark.circle.fill" : "circle")
-                                    .foregroundStyle(state == "готово" ? .green :
-                                                     state == "ошибка" ? .red : .secondary)
-                                Text(phase.label).font(.callout)
-                                Spacer()
-                                Text(state).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .padding(17)
-                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
-                    if let error = job.error {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.callout)
-                    }
                 }
 
                 HStack {
@@ -544,6 +568,23 @@ private struct ContentView: View {
                     Text("Исходники будут отправлены в публичный GitHub. Автоматического merge не будет.")
                 }
 
+                if store.busy {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small)
+                        Text("Выполняется действие. Результат появится здесь.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                if !store.lastResult.isEmpty && !store.busy {
+                    Text(store.lastResult)
+                        .font(.system(size: 12, design: .monospaced))
+                        .textSelection(.enabled)
+                        .lineLimit(5)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 9))
+                }
+
                 if store.previewImage(slug: job.slug, platform: "ios") != nil ||
                    store.previewImage(slug: job.slug, platform: "android") != nil {
                     VStack(alignment: .leading, spacing: 8) {
@@ -565,6 +606,31 @@ private struct ContentView: View {
                                 }
                             }
                         }
+                    }
+                }
+
+                if job.isCollaborative {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Этапы выполнения").font(.headline)
+                        ForEach(phases) { phase in
+                            let state = store.phaseState(slug: job.slug, key: phase.key)
+                            HStack {
+                                Image(systemName: state == "готово" ? "checkmark.circle.fill" :
+                                      state == "ошибка" ? "xmark.circle.fill" : "circle")
+                                    .foregroundStyle(state == "готово" ? .green :
+                                                     state == "ошибка" ? .red : .secondary)
+                                Text(phase.label).font(.callout)
+                                Spacer()
+                                Text(state).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(17)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+                    if let error = job.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.callout)
                     }
                 }
 

@@ -66,9 +66,11 @@ def registry():
 def save(jobs):
     (STATE / "jobs.json").write_text(json.dumps(jobs, indent=2))
 
-def new(slug, prompt, swap=False):
+def new(slug, prompt, swap=False, demo=False):
     if swap:
         raise SystemExit("--swap is retired: roles are shared across BOTH platforms.")
+    if not demo:
+        raise SystemExit("This command creates a standalone MOCK, not Telegram. Specify --demo explicitly.")
     import collab
     collab.create(slug, prompt)
 
@@ -279,6 +281,7 @@ def main():
     n.add_argument("slug")
     n.add_argument("prompt")
     n.add_argument("--swap", action="store_true")
+    n.add_argument("--demo", action="store_true", help="Explicitly create a standalone mock")
     s.add_parser("status")
     verification = s.add_parser("verify")
     verification.add_argument("slug")
@@ -311,7 +314,7 @@ def main():
         import collab
         collab.show_workflow()
     elif args.command == "new":
-        new(args.slug, args.prompt, args.swap)
+        new(args.slug, args.prompt, args.swap, demo=args.demo)
     elif args.command == "status":
         status()
     elif args.command == "verify":

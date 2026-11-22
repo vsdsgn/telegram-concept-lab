@@ -13,7 +13,39 @@ ROOT = Path(__file__).resolve().parent
 STATE = ROOT / ".lab"
 ADB = Path.home() / "Library/Android/sdk/platform-tools/adb"
 EMULATOR = Path.home() / "Library/Android/sdk/emulator/emulator"
-SIMULATOR_APP = Path("/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app")
+def selected_xcode_apps():
+    """Xcode 27 moved Simulator to Device Hub; resolve selected Xcode, not a hardcoded path."""
+    result = call(["xcode-select", "-p"], timeout=10)
+    developer = Path(result.stdout.strip()).resolve()
+    hub = developer.parent / "Applications/DeviceHub.app"
+    legacy = developer / "Applications/Simulator.app"
+    return hub, legacy
+
+
+def reveal_ios_device(device):
+    hub, legacy = selected_xcode_apps()
+    if hub.is_dir():
+        # Xcode 27 requires its Device Hub deep link, after the simulator has booted.
+        uri = f"devices://device/open?id={device}"
+        call(["open", "-a", hub, uri], timeout=25)
+        return "Device Hub"
+    if legacy.is_dir():
+        call(["open", "-a", legacy, "--args", "-CurrentDeviceUDID", device], timeout=25)
+        return "Simulator"
+    return None
+
+
+def reveal_android_window():
+    """Focus the existing emulator GUI; without this the APK launches offscreen."""
+    try:
+        result = call(
+            ["osascript", "-e",
+             'tell application "System Events" to tell application process "qemu-system-aarch64" to set frontmost to true'],
+            timeout=8, check=False,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 def call(argv, timeout=90, check=True, capture=True):
@@ -121,14 +153,16 @@ def preview(slug, platform):
         if not bundle_id or "$(" in bundle_id:
             raise RuntimeError("iOS CFBundleIdentifier is invalid.")
         device = ensure_ios()
-        if SIMULATOR_APP.exists():
-            call(["open", "-a", SIMULATOR_APP], timeout=25)
         call(["xcrun", "simctl", "install", device, app], timeout=130)
         call(["xcrun", "simctl", "launch", device, bundle_id], timeout=30)
+        host = reveal_ios_device(device)
         time.sleep(2)
         screenshot = screenshot_dir / "ios.png"
         call(["xcrun", "simctl", "io", device, "screenshot", screenshot], timeout=30)
         print(f"iOS demo RUNNING on {device}\nScreenshot: {screenshot}")
+        print(f"Window host: {host or 'unavailable'}. Screenshot is visible in Concept Lab.")
+        if host == "Device Hub":
+            print("Xcode 27 opens simulators through Device Hub, not Simulator.app.")
     else:
         work = STATE / "worktrees" / slug / "android" / "concepts" / slug / "android"
         apk = work / "app/build/outputs/apk/debug/app-debug.apk"
@@ -151,7 +185,9 @@ def preview(slug, platform):
                                  stdout=f, stderr=subprocess.PIPE, timeout=30)
             if res.returncode:
                 raise RuntimeError("Android screenshot failed.")
+        focused = reveal_android_window()
         print(f"Android demo RUNNING on {device} (PID {pid.stdout.strip()})\nScreenshot: {screenshot}")
+        print("Emulator window:", "focused" if focused else "focus unavailable; see screenshot in Concept Lab")
 
 
 if __name__ == "__main__":
