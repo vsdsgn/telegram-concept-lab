@@ -1,0 +1,35 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 60;
+	objects = {
+		A00000000000000000000001 = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = YES; LastSwiftUpdateCheck = 2700; LastUpgradeCheck = 2700; TargetAttributes = {A00000000000000000000002 = {CreatedOnToolsVersion = 27.1;}; A00000000000000000000003 = {CreatedOnToolsVersion = 27.1; TestTargetID = A00000000000000000000002;};};}; buildConfigurationList = A00000000000000000000040; compatibilityVersion = "Xcode 15.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, ru, Base); mainGroup = A00000000000000000000010; productRefGroup = A00000000000000000000011; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000002,A00000000000000000000003);};
+		A00000000000000000000002 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000041; buildPhases = (A00000000000000000000020,A00000000000000000000021,A00000000000000000000022); buildRules = (); dependencies = (); fileSystemSynchronizedGroups=(A00000000000000000000014); name = ReactionWheel; productName = ReactionWheel; productReference = A00000000000000000000012; productType = "com.apple.product-type.application";};
+		A00000000000000000000003 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000042; buildPhases = (A00000000000000000000023,A00000000000000000000024,A00000000000000000000025); buildRules=(); dependencies=(A00000000000000000000030); fileSystemSynchronizedGroups=(A00000000000000000000015); name=ReactionWheelTests; productName=ReactionWheelTests; productReference=A00000000000000000000013; productType="com.apple.product-type.bundle.unit-test";};
+		A00000000000000000000010 = {isa=PBXGroup; children=(A00000000000000000000014,A00000000000000000000015,A00000000000000000000011); sourceTree="<group>";};
+		A00000000000000000000011 = {isa=PBXGroup; children=(A00000000000000000000012,A00000000000000000000013); name=Products; sourceTree="<group>";};
+		A00000000000000000000014 = {isa=PBXFileSystemSynchronizedRootGroup; path=ReactionWheel; sourceTree="<group>";};
+		A00000000000000000000015 = {isa=PBXFileSystemSynchronizedRootGroup; path=ReactionWheelTests; sourceTree="<group>";};
+		A00000000000000000000012 = {isa=PBXFileReference; explicitFileType=wrapper.application; includeInIndex=0; path=ReactionWheel.app; sourceTree=BUILT_PRODUCTS_DIR;};
+		A00000000000000000000013 = {isa=PBXFileReference; explicitFileType=wrapper.cfbundle; includeInIndex=0; path=ReactionWheelTests.xctest; sourceTree=BUILT_PRODUCTS_DIR;};
+		A00000000000000000000020 = {isa=PBXSourcesBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000021 = {isa=PBXFrameworksBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000022 = {isa=PBXResourcesBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000023 = {isa=PBXSourcesBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000024 = {isa=PBXFrameworksBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000025 = {isa=PBXResourcesBuildPhase; buildActionMask=2147483647; files=(); runOnlyForDeploymentPostprocessing=0;};
+		A00000000000000000000030 = {isa=PBXTargetDependency; target=A00000000000000000000002; targetProxy=A00000000000000000000031;};
+		A00000000000000000000031 = {isa=PBXContainerItemProxy; containerPortal=A00000000000000000000001; proxyType=1; remoteGlobalIDString=A00000000000000000000002; remoteInfo=ReactionWheel;};
+		A00000000000000000000040 = {isa=XCConfigurationList; buildConfigurations=(A00000000000000000000050,A00000000000000000000051); defaultConfigurationIsVisible=0; defaultConfigurationName=Release;};
+		A00000000000000000000041 = {isa=XCConfigurationList; buildConfigurations=(A00000000000000000000052,A00000000000000000000053); defaultConfigurationIsVisible=0; defaultConfigurationName=Release;};
+		A00000000000000000000042 = {isa=XCConfigurationList; buildConfigurations=(A00000000000000000000054,A00000000000000000000055); defaultConfigurationIsVisible=0; defaultConfigurationName=Release;};
+		A00000000000000000000050 = {isa=XCBuildConfiguration; buildSettings={CLANG_ENABLE_MODULES=YES; SWIFT_VERSION=6.0; IPHONEOS_DEPLOYMENT_TARGET=17.0;};name=Debug;};
+		A00000000000000000000051 = {isa=XCBuildConfiguration; buildSettings={CLANG_ENABLE_MODULES=YES; SWIFT_VERSION=6.0; IPHONEOS_DEPLOYMENT_TARGET=17.0;};name=Release;};
+		A00000000000000000000052 = {isa=XCBuildConfiguration; buildSettings={PRODUCT_BUNDLE_IDENTIFIER="com.example.ReactionWheelDemo"; PRODUCT_NAME="$(TARGET_NAME)"; SDKROOT=iphoneos; TARGETED_DEVICE_FAMILY="1,2"; SUPPORTS_MACCATALYST=NO; GENERATE_INFOPLIST_FILE=YES; INFOPLIST_KEY_CFBundleDisplayName="Reaction Wheel"; INFOPLIST_KEY_LSApplicationCategoryType="public.app-category.social-networking"; INFOPLIST_KEY_UILaunchScreen_Generation=YES; INFOPLIST_KEY_UISupportedInterfaceOrientations="UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"; CODE_SIGN_STYLE=Automatic; DEVELOPMENT_TEAM=""; ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS=NO; SWIFT_VERSION=6.0; SWIFT_OPTIMIZATION_LEVEL="-Onone"; ENABLE_TESTABILITY=YES;};name=Debug;};
+		A00000000000000000000053 = {isa=XCBuildConfiguration; buildSettings={PRODUCT_BUNDLE_IDENTIFIER="com.example.ReactionWheelDemo"; PRODUCT_NAME="$(TARGET_NAME)"; SDKROOT=iphoneos; TARGETED_DEVICE_FAMILY="1,2"; SUPPORTS_MACCATALYST=NO; GENERATE_INFOPLIST_FILE=YES; INFOPLIST_KEY_CFBundleDisplayName="Reaction Wheel"; INFOPLIST_KEY_UILaunchScreen_Generation=YES; CODE_SIGN_STYLE=Automatic; DEVELOPMENT_TEAM=""; SWIFT_VERSION=6.0; SWIFT_OPTIMIZATION_LEVEL="-O";};name=Release;};
+		A00000000000000000000054 = {isa=XCBuildConfiguration; buildSettings={PRODUCT_BUNDLE_IDENTIFIER="com.example.ReactionWheelDemoTests"; PRODUCT_NAME="$(TARGET_NAME)"; SDKROOT=iphoneos; GENERATE_INFOPLIST_FILE=YES; CODE_SIGN_STYLE=Automatic; DEVELOPMENT_TEAM=""; SWIFT_VERSION=6.0; TEST_HOST="$(BUILT_PRODUCTS_DIR)/ReactionWheel.app/ReactionWheel"; BUNDLE_LOADER="$(TEST_HOST)";};name=Debug;};
+		A00000000000000000000055 = {isa=XCBuildConfiguration; buildSettings={PRODUCT_BUNDLE_IDENTIFIER="com.example.ReactionWheelDemoTests"; PRODUCT_NAME="$(TARGET_NAME)"; SDKROOT=iphoneos; GENERATE_INFOPLIST_FILE=YES; CODE_SIGN_STYLE=Automatic; DEVELOPMENT_TEAM=""; SWIFT_VERSION=6.0; TEST_HOST="$(BUILT_PRODUCTS_DIR)/ReactionWheel.app/ReactionWheel"; BUNDLE_LOADER="$(TEST_HOST)";};name=Release;};
+	};
+	rootObject = A00000000000000000000001;
+}

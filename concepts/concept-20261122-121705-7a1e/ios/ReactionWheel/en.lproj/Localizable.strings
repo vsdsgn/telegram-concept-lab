@@ -1,0 +1,10 @@
+"app.title" = "Reaction Wheel";
+"demo.banner" = "Demo data — not connected to Telegram";
+"demo.hint" = "Hold a message, slide to a reaction, then release.";
+"reaction.like" = "Like"; "reaction.love" = "Love"; "reaction.laugh" = "Laugh"; "reaction.wow" = "Wow"; "reaction.sad" = "Sad"; "reaction.fire" = "Fire";
+"wheel.choose" = "Choose a reaction"; "wheel.slide" = "Slide to choose"; "wheel.cancel" = "Release to cancel"; "wheel.remove" = "Remove %@";
+"common.close" = "Close"; "common.cancel" = "Cancel";
+"settings.accessibility" = "Demo settings"; "settings.title" = "Demo settings"; "settings.theme" = "Theme"; "settings.reduceMotion" = "Reduce motion"; "settings.haptics" = "Haptics"; "settings.debug" = "Show hit zones"; "settings.reset" = "Reset reactions"; "settings.about" = "About"; "settings.aboutText" = "Demo data — not connected to Telegram. Not affiliated with Telegram.";
+"theme.system" = "System"; "theme.light" = "Light"; "theme.dark" = "Dark"; "reset.confirm" = "Remove all demo reactions?";
+"a11y.message" = "message"; "a11y.react" = "React…"; "a11y.removeReaction" = "Remove reaction"; "a11y.noReaction" = "No reaction"; "a11y.yourReaction" = "Your reaction: %@"; "a11y.removeReactionNamed" = "Remove %@ reaction";
+"announce.added" = "Reacted with %@"; "announce.changed" = "Reaction changed to %@"; "announce.removed" = "Reaction removed";

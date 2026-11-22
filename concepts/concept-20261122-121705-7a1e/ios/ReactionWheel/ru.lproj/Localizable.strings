@@ -1,0 +1,10 @@
+"app.title" = "Колесо реакций";
+"demo.banner" = "Демо-данные — без подключения к Telegram";
+"demo.hint" = "Удерживайте сообщение, проведите к реакции и отпустите.";
+"reaction.like" = "Нравится"; "reaction.love" = "Люблю"; "reaction.laugh" = "Смешно"; "reaction.wow" = "Ого"; "reaction.sad" = "Грустно"; "reaction.fire" = "Огонь";
+"wheel.choose" = "Выберите реакцию"; "wheel.slide" = "Проведите, чтобы выбрать"; "wheel.cancel" = "Отпустите для отмены"; "wheel.remove" = "Убрать %@";
+"common.close" = "Закрыть"; "common.cancel" = "Отмена";
+"settings.accessibility" = "Настройки демо"; "settings.title" = "Настройки демо"; "settings.theme" = "Тема"; "settings.reduceMotion" = "Уменьшение движения"; "settings.haptics" = "Тактильный отклик"; "settings.debug" = "Показать зоны"; "settings.reset" = "Сбросить реакции"; "settings.about" = "О демо"; "settings.aboutText" = "Демо-данные — без подключения к Telegram. Не связано с Telegram.";
+"theme.system" = "Системная"; "theme.light" = "Светлая"; "theme.dark" = "Тёмная"; "reset.confirm" = "Убрать все демо-реакции?";
+"a11y.message" = "сообщение"; "a11y.react" = "Реакция…"; "a11y.removeReaction" = "Убрать реакцию"; "a11y.noReaction" = "Нет реакции"; "a11y.yourReaction" = "Ваша реакция: %@"; "a11y.removeReactionNamed" = "Убрать реакцию %@";
+"announce.added" = "Реакция: %@"; "announce.changed" = "Реакция изменена: %@"; "announce.removed" = "Реакция убрана";
