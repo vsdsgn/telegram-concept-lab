@@ -357,7 +357,7 @@ private struct ContentView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Настоящие клиенты Telegram")
                     .font(.system(size: 29, weight: .bold))
-                Text("Reaction Wheel интегрируется в официальные исходники Telegram 13.2 (iOS) и 13.2.2 (Android). Это НЕ прежние моки. Рабочие сборки оригинальных клиентов пока не подтверждены.")
+                Text("Reaction Wheel встроен в официальные исходники Telegram 13.2 (iOS) и 13.2.2 (Android). Оба официальных клиента собраны, установлены и запущены в эмуляторах iOS/Android. Жест на реальных сообщениях требует входа в Telegram.")
                     .foregroundStyle(.secondary)
                 ForEach(["ios", "android"], id: \.self) { platform in
                     let directory = FileManager.default.homeDirectoryForCurrentUser
@@ -365,7 +365,7 @@ private struct ContentView: View {
                             (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
                     let diagnostics = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/" +
-                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-gradle-after-maven-batch-3"))
+                            (platform == "ios" ? "ios-full-app-wheel-fix3" : "android-final-wheel-apk-build"))
                     let resultPath = diagnostics.appendingPathExtension("exit")
                     let result = (try? String(contentsOf: resultPath, encoding: .utf8))?
                         .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -375,7 +375,7 @@ private struct ContentView: View {
                                 .font(.headline)
                             Spacer()
                             if result == "0" {
-                                StatusTag(text: platform == "ios" ? "Geometry XCTest · OK" : "Gradle конфигурация · OK", color: .green)
+                                StatusTag(text: platform == "ios" ? "Полная iOS-сборка · OK" : "Реальный APK · OK", color: .green)
                             } else if result != nil {
                                 StatusTag(text: "Сборка / тест заблокирован", color: .red)
                             } else {
@@ -391,7 +391,7 @@ private struct ContentView: View {
                         let log = diagnostics.appendingPathExtension("log")
                         if let raw = try? String(contentsOf: log, encoding: .utf8) {
                             HStack {
-                                Text(platform == "ios" ? "Bazel · Geometry XCTest" : "Gradle · проверка зависимостей")
+                                Text(platform == "ios" ? "Bazel · полная сборка клиента" : "Gradle · сборка Telegram APK")
                                     .font(.caption).fontWeight(.medium)
                                 Spacer()
                                 Button("Открыть полный лог") { NSWorkspace.shared.open(log) }
@@ -401,6 +401,41 @@ private struct ContentView: View {
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(12)
                         }
+                        if platform == "ios" {
+                            HStack(spacing: 12) {
+                                Button("Открыть Telegram iOS") {
+                                    let simulator = Process()
+                                    simulator.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                                    simulator.arguments = ["-a", "Simulator", "--args", "-CurrentDeviceUDID", "F8BC5BDB-3116-48EF-9CB7-565749818737"]
+                                    try? simulator.run()
+                                }
+                                Button("Найти IPA") {
+                                    NSWorkspace.shared.activateFileViewerSelecting([directory.appendingPathComponent("bazel-bin/Telegram/Telegram.ipa")])
+                                }
+                            }
+                            Text("Telegram 13.2 установлен и запущен на iPhone 17 / iOS 26.1. Геометрия Reaction Wheel проверена XCTest; жест в настоящем чате пока не подтверждён.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if platform == "android" {
+                            HStack(spacing: 12) {
+                                Button("Открыть Telegram Beta") {
+                                    let viewer = Process()
+                                    viewer.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/scrcpy")
+                                    viewer.arguments = ["-s", "emulator-5554", "--no-audio", "--max-size=900", "--window-title=Telegram Beta · Reaction Wheel"]
+                                    var env = ProcessInfo.processInfo.environment
+                                    env["PATH"] = FileManager.default.homeDirectoryForCurrentUser
+                                        .appendingPathComponent("Library/Android/sdk/platform-tools").path + ":" + (env["PATH"] ?? "")
+                                    viewer.environment = env
+                                    try? viewer.run()
+                                }
+                                Button("Найти APK") {
+                                    let apk = directory.appendingPathComponent("TMessagesProj_App/build/outputs/apk/afat/debug/app.apk")
+                                    NSWorkspace.shared.activateFileViewerSelecting([apk])
+                                }
+                            }
+                            Text("Оригинальный Telegram Beta уже установлен. Для проверки жеста нужен вход в аккаунт; тест на реальных сообщениях не завершён.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         if platform == "android" {
                             let ndkProperties = FileManager.default.homeDirectoryForCurrentUser
                                 .appendingPathComponent("Library/Android/sdk/ndk/27.2.12479018/source.properties")
@@ -409,7 +444,7 @@ private struct ContentView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        Text("Это проверка исходников. Установленная модификация Telegram с реальным чатом пока не подтверждена.")
+                        Text("Сборка и установка не подтверждают работу жеста в авторизованном чате; этот тест проводится отдельно.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     .padding(15)
