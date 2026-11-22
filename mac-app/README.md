@@ -11,7 +11,7 @@ This is a **real SwiftUI macOS app** (not AppleScript, Electron, web dashboard o
 1. Open the desktop **Telegram Concept Lab.app** icon.
 2. Click **Новый концепт**, enter your prompt and explicitly confirm that the spec/code will be published to a **public** GitHub repository.
 3. Click **Запустить Claude + Codex**. The app calls `python3 lab.py new <slug> <prompt>` and returns after the background pipeline starts.
-4. View the concept in the left sidebar; status and 9 stages refresh every 3 seconds. Select a stage to read its model log.
+4. View the concept in the left sidebar; status and 11 stages (including native build checks) refresh every 3 seconds. Select a stage to read its model log.
 5. If a stage fails, click **Продолжить с места ошибки**. Already verified work is not repeated. **Остановить** cancels the worker group while preserving completed stages.
 6. After both models finish, independently verify the iOS Xcode simulator build and Android Gradle build/unit tests. The **Проверить сборки** button lets you repeat this check.
 7. Once both verifications pass, review the Xcode and Android Studio apps, then use **Создать черновые PR**. No auto-merge.

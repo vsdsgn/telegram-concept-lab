@@ -76,7 +76,9 @@ def verify_one(slug, platform):
         cmd = [
             "xcodebuild", "-project", project, "-scheme", scheme,
             "-configuration", "Debug", "-destination", "generic/platform=iOS Simulator",
-            "-derivedDataPath", derived, "CODE_SIGNING_ALLOWED=NO", "build",
+            "-derivedDataPath", derived,
+            "CODE_SIGNING_ALLOWED=NO", "ARCHS=arm64", "ONLY_ACTIVE_ARCH=YES",
+            "build",
         ]
         result = _run(cmd, work, log, timeout=900)
         apps = list((derived / "Build/Products").rglob("*.app")) if derived.exists() else []
