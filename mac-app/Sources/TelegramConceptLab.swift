@@ -365,7 +365,7 @@ private struct ContentView: View {
                             (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
                     let diagnostics = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/" +
-                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-gradle-config-third-pass"))
+                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-gradle-after-maven-batch-3"))
                     let resultPath = diagnostics.appendingPathExtension("exit")
                     let result = (try? String(contentsOf: resultPath, encoding: .utf8))?
                         .trimmingCharacters(in: .whitespacesAndNewlines)
