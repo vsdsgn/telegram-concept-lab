@@ -22,7 +22,7 @@ xcodebuild \
   build
 ```
 
-Verified on 2026-11-22 with Xcode 27.1 (build 27A9275): `** BUILD SUCCEEDED **`. The build produced `ReactionWheel.app` for arm64 and x86_64 iOS Simulator architectures. Xcode emitted only the expected App Intents metadata warning and local CoreSimulator service warnings.
+Re-verified after the Claude review fixes on 2026-11-22 with Xcode 27.1 (build 27A9275): `** BUILD SUCCEEDED **`. The build produced `ReactionWheel.app` for arm64 and x86_64 iOS Simulator architectures. The generated Info.plist contains `UIApplicationSceneManifest`; app launch itself could not be exercised because CoreSimulatorService was unavailable. Xcode emitted deprecation warnings for two UIKit compatibility hooks plus the expected App Intents metadata and local CoreSimulator warnings.
 
 ## Test
 
@@ -39,7 +39,7 @@ xcodebuild \
   build-for-testing
 ```
 
-Verified result: `** TEST BUILD SUCCEEDED **`. Geometry tests cover the six unique targets, preferred up placement, RTL order mirroring, held-anchor invariant, and compact fallback.
+Re-verified result: `** TEST BUILD SUCCEEDED **`. Eight geometry tests now cover the four 1.0× design fixtures, the 1.3× fixture, minimal translation, safe/unique targets, label-to-item clearance, RTL order mirroring, held-anchor invariant, and compact fallback.
 
 To execute them on a machine with an available runtime:
 
@@ -52,7 +52,7 @@ xcodebuild \
   test
 ```
 
-Test execution was not claimed here: CoreSimulatorService was unavailable in the build environment (`Unable to discover any Simulator runtimes`). Automated evidence is therefore test compilation only, not a passing test run.
+Test execution is not claimed: the command above was attempted, reported `Unable to discover any Simulator runtimes` / an invalid CoreSimulatorService connection, and was stopped after it could not resolve the destination. Automated evidence is therefore test compilation only, not a passing test run.
 
 ## Run and demo
 
@@ -69,19 +69,22 @@ Useful checks:
 ## Implemented behavior
 
 - 350 ms native long press with 10 pt pre-open movement tolerance and scroll arbitration
-- six-item semicircle, deterministic axis preference, RTL mapping, scale-aware selected extents, and compact fallback
+- six-item semicircle, deterministic minimal-shift placement with the design's ≤24 pt preference, measured label clearance, RTL mapping, scale-aware selected extents, and compact fallback
 - 44 pt selection entry / 32 pt exit dead zone; 80 pt capture, 96 pt stay, and 8 pt switch hysteresis
-- spring cascade, live scrubbing, selection haptics limited to one per 85 ms, add/replace/remove/cancel outcomes
+- interruptible spring cascade, live scrubbing with explicit Armed-idle/Outside state, selection haptics limited to one per 85 ms, and add/replace/remove/cancel state outcomes
 - Dynamic Type, semantic dynamic colors, dark mode, Reduce Motion, Reduce Transparency-friendly opaque surfaces, EN/RU localization
-- VoiceOver labels, message custom actions, modal persistent picker, 48 pt controls, escape dismissal, result announcements, and focus restoration
+- localized VoiceOver labels, message custom actions, modal persistent picker, 48 pt controls (including an expanded chip target), escape dismissal, ordered result announcements, and focus restoration
 - interruption handling for backgrounding, rotation, gesture cancellation, and scroll restoration
 
 ## Known limitations and evidence gaps
 
 - No physical-device check was available. Haptic feel, the 44/32 pt thumb thresholds, spring feel, and frame pacing remain unverified on hardware.
 - No simulator runtime was available, so visual recordings, executed XCTest results, VoiceOver checks, AX5 layout inspection, landscape/small-window inspection, and measured frame pacing were not produced. These are not reported as passed.
-- The compact fallback uses a single-column panel rather than the optional two-column arrangement. All controls remain at least 48 pt.
+- The compact fallback remains a single-column, non-scrolling panel. It does show the current reaction and removal semantics, but the design's two-column layout and pinned-header scrolling behavior remain to be implemented and visually verified.
 - Keyboard focus uses UIKit accessibility/button behavior; custom arrow-key traversal and an explicit Tab focus trap are not implemented.
+- The detailed motion design is still incomplete: there is no tangential neighbour push, selected removal badge, fly-to-chip, chip shrink, or staggered cancel collapse. The wheel plate is a rounded polyline rather than a true circular arc. These are fidelity gaps, not claimed as complete.
+- The lifted bubble now has the specified shadow, but the delayed 0.98 pre-open pressing state is not implemented.
+- Gesture/state-machine and arbitration behavior (including second-finger rejection and scroll restoration) is fixed in code but still lacks executable unit/UI coverage because the simulator could not run.
 - The demo draws configured debug hit zones but does not print the full textual placement diagnostics described in the shared design.
 - Contrast-motivated substitutions from the draft palette: dark secondary text is `#AEB8C3` (instead of `#8E99A6`), light secondary text is `#56616D` (instead of `#6B7480`), and accent tones are strengthened. Composited contrast still needs instrumented visual verification.
 - Reaction state is intentionally in memory and resets when the app process exits.

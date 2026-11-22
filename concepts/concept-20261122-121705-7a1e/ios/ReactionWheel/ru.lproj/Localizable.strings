@@ -8,3 +8,4 @@
 "theme.system" = "Системная"; "theme.light" = "Светлая"; "theme.dark" = "Тёмная"; "reset.confirm" = "Убрать все демо-реакции?";
 "a11y.message" = "сообщение"; "a11y.react" = "Реакция…"; "a11y.removeReaction" = "Убрать реакцию"; "a11y.noReaction" = "Нет реакции"; "a11y.yourReaction" = "Ваша реакция: %@"; "a11y.removeReactionNamed" = "Убрать реакцию %@";
 "announce.added" = "Реакция: %@"; "announce.changed" = "Реакция изменена: %@"; "announce.removed" = "Реакция убрана";
+"a11y.itemOfCount" = "%@, %d из %d"; "a11y.wheelOptions" = "Колесо реакций. Вариантов: %d."; "sender.you" = "Вы";

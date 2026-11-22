@@ -8,3 +8,4 @@
 "theme.system" = "System"; "theme.light" = "Light"; "theme.dark" = "Dark"; "reset.confirm" = "Remove all demo reactions?";
 "a11y.message" = "message"; "a11y.react" = "React…"; "a11y.removeReaction" = "Remove reaction"; "a11y.noReaction" = "No reaction"; "a11y.yourReaction" = "Your reaction: %@"; "a11y.removeReactionNamed" = "Remove %@ reaction";
 "announce.added" = "Reacted with %@"; "announce.changed" = "Reaction changed to %@"; "announce.removed" = "Reaction removed";
+"a11y.itemOfCount" = "%@, %d of %d"; "a11y.wheelOptions" = "Reaction wheel. %d options."; "sender.you" = "You";
