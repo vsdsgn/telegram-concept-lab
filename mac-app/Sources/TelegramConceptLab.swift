@@ -403,17 +403,22 @@ private struct ContentView: View {
                         }
                         if platform == "ios" {
                             HStack(spacing: 12) {
-                                Button("Открыть Telegram iOS") {
-                                    let simulator = Process()
-                                    simulator.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                                    simulator.arguments = ["-a", "Simulator", "--args", "-CurrentDeviceUDID", "F8BC5BDB-3116-48EF-9CB7-565749818737"]
-                                    try? simulator.run()
+                                Button("Запустить Telegram iOS") {
+                                    let simctl = Process()
+                                    simctl.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+                                    simctl.arguments = ["simctl", "launch", "F8BC5BDB-3116-48EF-9CB7-565749818737", "ph.telegra.Telegraph"]
+                                    try? simctl.run()
+                                }
+                                Button("Открыть скриншот") {
+                                    let image = FileManager.default.homeDirectoryForCurrentUser
+                                        .appendingPathComponent("Projects/telegram-integrations/ios-real-telegram-on-simulator-after-start.png")
+                                    NSWorkspace.shared.open(image)
                                 }
                                 Button("Найти IPA") {
                                     NSWorkspace.shared.activateFileViewerSelecting([directory.appendingPathComponent("bazel-bin/Telegram/Telegram.ipa")])
                                 }
                             }
-                            Text("Telegram 13.2 установлен и запущен на iPhone 17 / iOS 26.1. Геометрия Reaction Wheel проверена XCTest; жест в настоящем чате пока не подтверждён.")
+                            Text("Telegram 13.2 установлен и запущен через simctl на iPhone 17 / iOS 26.1. Графический Simulator.app в установленном Xcode отсутствует; жест в настоящем чате пока не подтверждён.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if platform == "android" {
