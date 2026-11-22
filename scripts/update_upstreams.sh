@@ -29,8 +29,18 @@ for name in Telegram-iOS Telegram-Android; do
     print "$name: FETCH ERROR (existing checkout unchanged)"
     continue
   fi
-  if [[ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" || "$current" != "$expected" ]]; then
-    print "$name: local work/change detected, kept intact; fetched only"
+  # A submodule's separately checked-out HEAD is not a tracked source edit.
+  # Respect all regular tracked/untracked changes while never checking out,
+  # resetting or overwriting any nested repository contents.
+  if [[ -n "$(git -C "$dir" status --porcelain --ignore-submodules=all 2>/dev/null)" || "$current" != "$expected" ]]; then
+    print "$name: tracked/untracked source changes or unexpected branch; fetched only"
+    continue
+  fi
+  # If upstream changed any gitlink (mode 160000), a fast-forward could leave
+  # user's nested checkouts inconsistent. Require a manual submodule review.
+  gitlinks="$(git -C "$dir" diff --raw HEAD "origin/$expected" 2>/dev/null | grep -E '^:160000 |^:[0-9]{6} 160000 ' || true)"
+  if [[ -n "$gitlinks" ]]; then
+    print "$name: upstream changes submodule revisions; fetched only, review before merge"
     continue
   fi
   if git -C "$dir" merge --ff-only "origin/$expected"; then
