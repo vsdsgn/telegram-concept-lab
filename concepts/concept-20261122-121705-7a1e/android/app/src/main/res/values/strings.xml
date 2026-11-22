@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Reaction Wheel</string><string name="settings">Demo settings</string>
+    <string name="demo_banner">Demo data — not connected to Telegram</string>
+    <string name="hint">Hold a message, slide to a reaction, then release.</string>
+    <string name="choose">Choose a reaction</string><string name="slide_choose">Slide to choose</string>
+    <string name="release_cancel">Release to cancel</string><string name="close">Close</string>
+    <string name="react">React…</string><string name="remove_reaction">Remove reaction</string>
+    <string name="reaction_wheel">Reaction wheel. 6 options.</string>
+    <string name="theme">Dark appearance</string><string name="reduce_motion">Reduce motion</string>
+    <string name="haptics">Haptics</string><string name="debug">Show geometry</string><string name="reset">Reset reactions</string>
+    <string name="mock_label">Mock conversation</string>
+</resources>

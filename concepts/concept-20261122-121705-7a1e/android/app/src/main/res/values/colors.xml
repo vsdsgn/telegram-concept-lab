@@ -1,0 +1,5 @@
+<resources>
+    <color name="chat_bg">#EEF2F5</color><color name="bubble_in">#FFFFFF</color><color name="bubble_out">#DCEBFF</color>
+    <color name="text_primary">#111418</color><color name="text_secondary">#59636F</color><color name="accent">#2A7DE1</color>
+    <color name="chip_fill">#DCE4EA</color><color name="chip_mine">#C9DFFF</color>
+</resources>

@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Колесо реакций</string><string name="settings">Настройки демо</string>
+    <string name="demo_banner">Демо-данные — без подключения к Telegram</string>
+    <string name="hint">Удерживайте сообщение, проведите к реакции и отпустите.</string>
+    <string name="choose">Выберите реакцию</string><string name="slide_choose">Проведите, чтобы выбрать</string>
+    <string name="release_cancel">Отпустите для отмены</string><string name="close">Закрыть</string>
+    <string name="react">Реагировать…</string><string name="remove_reaction">Убрать реакцию</string>
+    <string name="reaction_wheel">Колесо реакций. 6 вариантов.</string>
+    <string name="theme">Тёмное оформление</string><string name="reduce_motion">Уменьшение движения</string>
+    <string name="haptics">Виброотклик</string><string name="debug">Показать геометрию</string><string name="reset">Сбросить реакции</string>
+    <string name="mock_label">Демонстрационный чат</string>
+</resources>
