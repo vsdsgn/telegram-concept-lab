@@ -365,7 +365,7 @@ private struct ContentView: View {
                             (platform == "ios" ? "iOS" : "Android") + "-reaction-wheel")
                     let diagnostics = FileManager.default.homeDirectoryForCurrentUser
                         .appendingPathComponent("Projects/telegram-integrations/" +
-                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-official-gradle-offline"))
+                            (platform == "ios" ? "ios-bazel-device-corrected" : "android-gradle-config-third-pass"))
                     let resultPath = diagnostics.appendingPathExtension("exit")
                     let result = (try? String(contentsOf: resultPath, encoding: .utf8))?
                         .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -375,7 +375,7 @@ private struct ContentView: View {
                                 .font(.headline)
                             Spacer()
                             if result == "0" {
-                                StatusTag(text: "Тесты модуля · OK", color: .green)
+                                StatusTag(text: platform == "ios" ? "Geometry XCTest · OK" : "Gradle конфигурация · OK", color: .green)
                             } else if result != nil {
                                 StatusTag(text: "Сборка / тест заблокирован", color: .red)
                             } else {
@@ -391,7 +391,7 @@ private struct ContentView: View {
                         let log = diagnostics.appendingPathExtension("log")
                         if let raw = try? String(contentsOf: log, encoding: .utf8) {
                             HStack {
-                                Text(platform == "ios" ? "Bazel · XCTest" : "Gradle · настоящий клиент")
+                                Text(platform == "ios" ? "Bazel · Geometry XCTest" : "Gradle · проверка зависимостей")
                                     .font(.caption).fontWeight(.medium)
                                 Spacer()
                                 Button("Открыть полный лог") { NSWorkspace.shared.open(log) }
@@ -400,6 +400,14 @@ private struct ContentView: View {
                             Text(raw.components(separatedBy: .newlines).suffix(12).joined(separator: "\n"))
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundStyle(.secondary).textSelection(.enabled).lineLimit(12)
+                        }
+                        if platform == "android" {
+                            let ndkProperties = FileManager.default.homeDirectoryForCurrentUser
+                                .appendingPathComponent("Library/Android/sdk/ndk/27.2.12479018/source.properties")
+                            if FileManager.default.fileExists(atPath: ndkProperties.path) {
+                                Text("✓ NDK 27.2 установлена · точный media submodule восстановлен")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                         Text("Это проверка исходников. Установленная модификация Telegram с реальным чатом пока не подтверждена.")
                             .font(.caption).foregroundStyle(.secondary)
