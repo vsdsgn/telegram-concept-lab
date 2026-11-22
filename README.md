@@ -36,4 +36,12 @@ python3 lab.py prs animated-swipe-demo
 
 ## Requirements
 
-macOS with Xcode, Android Studio + SDK, Git, GitHub CLI authenticated, Codex CLI authenticated, Claude Code authenticated. Run `python3 lab.py doctor` for checks. See `AGENTS.md` and `DESIGN.md`.
+macOS with Xcode, Android Studio + SDK, Git, GitHub CLI authenticated, Codex CLI authenticated, Claude Code authenticated, Homebrew openjdk@17 for Gradle (pinned for Android runs only). Run `python3 lab.py doctor` for checks. See `AGENTS.md` and `DESIGN.md`.
+
+## Agent safety and verified prerequisites
+
+- Claude runs with native Bash sandbox, fail-if-unavailable enabled, no inherited MCP connectors, and blocks reads/writes outside working directories. Both code reviews use read-only planning mode.
+- Codex uses a private isolated CODEX_HOME with existing ChatGPT OAuth credentials and no global MCP servers or plugins. Approve-for-me applies workspace-write sandboxing.
+- System-wide JDK 25 is incompatible with Gradle 8.14. Android builds use Homebrew JDK 17, scoped to Android jobs.
+- Orchestrator commits only model-assigned content, then creates draft PRs only on explicit request.
+- Paperclip agents remain paused due unsafe default adapter invocation. Use the Desktop launcher for live runs.

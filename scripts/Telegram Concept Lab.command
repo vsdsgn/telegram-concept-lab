@@ -20,7 +20,7 @@ if [[ "${1:-}" == "--status" ]]; then show_status; exit 0; fi
 if [[ "${1:-}" == "--doctor" ]]; then python3 "$ROOT/lab.py" doctor; exit 0; fi
 
 CHOICE=$(/usr/bin/osascript <<'APPLESCRIPT'
-set actions to {"Новый концепт — Claude дизайн + Codex код + взаимное ревью", "Статус запусков", "Создать черновые PR из готовых сборок", "Открыть готовый iOS-прототип", "Открыть готовый Android-прототип", "GitHub: задачи и PR", "Paperclip: управление"}
+set actions to {"Новый концепт — Claude дизайн + Codex код + взаимное ревью", "Статус запусков", "Проверить систему", "Открыть логи", "Создать черновые PR из готовых сборок", "Открыть готовый iOS-прототип", "Открыть готовый Android-прототип", "GitHub: задачи и PR", "Paperclip: управление"}
 set selection to choose from list actions with title "Telegram Concept Lab" with prompt "Что делаем?" default items {item 1 of actions} without multiple selections allowed
 if selection is false then
     return "cancel"
@@ -69,6 +69,19 @@ APPLESCRIPT
   "Статус"*)
     show_status
     message_dialog "Статус и названия веток показаны в окне Terminal. Для результатов открой GitHub → Pull requests."
+    ;;
+  "Проверить систему"*)
+    python3 "$ROOT/lab.py" doctor
+    python3 -m unittest discover -s "$ROOT/tests" -q
+    STATUS=$?
+    if [[ "$STATUS" -eq 0 ]]; then
+      message_dialog "Проверка оркестратора прошла. Статус инструментов показан в Terminal. Для нового концепта выбери Новый концепт."
+    else
+      message_dialog "Есть проблема: проверь последние сообщения в Terminal."
+    fi
+    ;;
+  "Открыть логи"*)
+    open "$ROOT/.lab/logs"
     ;;
   "Создать черновые PR"*)
     LAST_SLUG=$(python3 -c 'import json;from pathlib import Path;p=Path(".lab/jobs.json");d=json.loads(p.read_text()) if p.exists() else {};print(next(reversed(d),""))')

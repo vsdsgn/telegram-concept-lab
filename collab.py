@@ -17,7 +17,23 @@ import threading
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / ".lab"
 TASKS = STATE / "jobs.json"
-SETTINGS = '{"env":{"ANTHROPIC_BASE_URL":"","ANTHROPIC_API_KEY":"","CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY":"false"}}'
+SETTINGS = json.dumps({
+    "env": {
+        "ANTHROPIC_BASE_URL": "",
+        "ANTHROPIC_API_KEY": "",
+        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "false",
+    },
+    "sandbox": {
+        "enabled": True,
+        "failIfUnavailable": True,
+        "autoAllowBashIfSandboxed": True,
+        "allowUnsandboxedCommands": False,
+    },
+    "permissions": {
+        "blockReadsOutsideWorkingDirectories": True,
+        "blockWritesOutsideWorkingDirectories": True,
+    },
+})
 JOB_LOCK = threading.Lock()
 PHASES = [
     ("design", "Claude: UX / interaction design"),
@@ -112,15 +128,30 @@ def create(slug, prompt):
 
 def tool(agent, cwd, prompt, logfile, readonly=False, timeout=3600):
     env = os.environ.copy()
+    # Gradle 8.14 requires a compatible Java runtime; do not change system-wide JDK.
+    if cwd.name == "android":
+        java_home = Path("/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home")
+        if not (java_home / "bin/java").exists():
+            raise RuntimeError(f"Android JDK 17 missing: {java_home}")
+        env["JAVA_HOME"] = str(java_home)
+        env["PATH"] = str(java_home / "bin") + os.pathsep + env.get("PATH", "")
     if agent == "codex":
+        # Use a dedicated CODEX_HOME with minimal config and shared OAuth auth symlink,
+        # preventing global MCP servers/plugins from loading on every concept task.
+        env["CODEX_HOME"] = str(Path.home() / ".local/share/telegram-concept-lab/codex-home")
         # Workspace-write sandbox, never use --dangerously-bypass-approvals-and-sandbox.
-        cmd = ["codex", "exec", "-C", str(cwd), "-m", "gpt-5.6-sol", "--approve-for-me", prompt]
+        # --approve-for-me itself enforces the workspace-write sandbox; mixing -s is a CLI error.
+        cmd = ["codex", "exec", "-C", str(cwd), "-m", "gpt-5.6-sol",
+               "--approve-for-me", prompt]
     elif agent == "claude":
         for key in ("ANTHROPIC_AUTH_TOKEN", "AI_GATEWAY_API_KEY"):
             env.pop(key, None)
         # Review is intentionally read-only; capture text to log, then orchestrator writes report.
         cmd = ["claude", "-p", "--model", "sonnet",
                "--permission-mode", "plan" if readonly else "auto",
+               "--tools", "Read,Write,Edit,Glob,Grep,Bash",
+               "--strict-mcp-config",
+               "--setting-sources", "project,local",
                "--settings", SETTINGS, prompt]
     else:
         raise ValueError(agent)
@@ -136,7 +167,7 @@ def tool(agent, cwd, prompt, logfile, readonly=False, timeout=3600):
         except OSError as e:
             code = 125
             f.write(f"\n[PIPELINE] Process error: {e}\n")
-    logfile.with_suffix(".exit").write_text(str(code))
+    logfile.with_suffix(".model-exit").write_text(str(code))
     if code:
         raise RuntimeError(f"{agent} step failed with exit {code}: {logfile}")
     return logfile.read_text(errors="replace")
@@ -144,13 +175,45 @@ def tool(agent, cwd, prompt, logfile, readonly=False, timeout=3600):
 def stage(slug, name, agent, cwd, prompt, readonly=False, report=None):
     update(slug, phase=name)
     log = STATE / "logs" / slug / (name + ".log")
+    log.parent.mkdir(parents=True, exist_ok=True)
     print(f"[{slug}] {name}: {agent} ({cwd})", flush=True)
+    if name in ("design", "design-revise"):
+        scope = Path("concepts") / slug / "UX_DESIGN.md"
+    elif name == "design-review":
+        scope = Path("concepts") / slug / "DESIGN_REVIEW.md"
+    elif name.startswith(("build-", "fix-")):
+        scope = Path("concepts") / slug / name.split("-", 1)[1]
+    elif name.startswith("review-"):
+        if report is None:
+            raise RuntimeError("Code review requires a report path")
+        scope = report.relative_to(cwd)
+    else:
+        raise RuntimeError(f"Unknown stage {name}")
+
     result = tool(agent, cwd, prompt, log, readonly=readonly)
     if report is not None:
+        if not result.strip():
+            raise RuntimeError(f"Empty code review by {agent}: {name}")
         report.parent.mkdir(parents=True, exist_ok=True)
         report.write_text("# Claude Code Review\n\n" + result[-25000:] + "\n")
-        git("add", str(report.relative_to(cwd)), cwd=cwd)
-        git("commit", "-m", f"review: {slug} {name}", cwd=cwd)
+    if not (cwd / scope).exists():
+        raise RuntimeError(f"{name} produced no expected artifact: {scope}")
+    changes = git("status", "--porcelain", "-uall", cwd=cwd).splitlines()
+    for line in changes:
+        path = line[3:].split(" -> ")[-1]
+        if path != scope.as_posix() and not path.startswith(scope.as_posix() + "/"):
+            raise RuntimeError(f"Unexpected file outside {scope}: {path}")
+    # Models never get Git commit ownership. Commit only assigned paths.
+    git("add", "--", scope.as_posix(), cwd=cwd)
+    pending = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=cwd)
+    if pending.returncode == 1:
+        git("commit", "-m", f"stage: {slug} {name}", cwd=cwd)
+    elif pending.returncode != 0:
+        raise RuntimeError("Could not inspect Git index")
+    elif name in ("design", "design-review", "build-ios", "build-android"):
+        raise RuntimeError(f"{name} finished without changes")
+    # A stage is successful only AFTER its outputs are validated and committed.
+    log.with_suffix(".exit").write_text("0")
     return result
 
 def platform_prompt(slug, platform):
@@ -164,7 +227,7 @@ def platform_prompt(slug, platform):
         "Include gestures, cancellation, accessibility, dark mode, reduced motion, tests, and a README "
         "with the exact build command and verified result. Use explicitly labeled mock data. "
         "No source copying from private apps, pushing, merging, publishing, or modifying other projects. "
-        "Make a Git commit of your own code. "
+        "Do NOT git commit or push; the orchestrator commits only permitted paths. "
         "You are not delegated to change files for the other platform."
     )
 
@@ -199,7 +262,7 @@ def run_pipeline(slug):
               "states, gesture timelines, spring/motion parameters, token sizes, dark/light, "
               "accessibility, edge cases, native differences, and explicit cross-platform "
               "acceptance criteria. Optionally add concise text wireframes as markdown. "
-              "No application implementation yet. Commit the design files. "
+              "No application implementation yet. Do NOT commit or push. "
               "Use only public mock data and avoid private content.")
         stage(slug, "design-review", "codex", design,
               f"You are Codex, independent design critic before implementation. "
@@ -208,13 +271,13 @@ def run_pipeline(slug):
               "feasibility, performance, accessibility, and implementation risks. "
               f"Write {shared}/DESIGN_REVIEW.md with P0/P1 and actionable recommendations "
               "and a clear decision (approved / changes required). "
-              "Do not implement apps or change UX_DESIGN.md. Commit review.")
+              "Do not implement apps or change UX_DESIGN.md. Do NOT commit or push.")
         stage(slug, "design-revise", "claude", design,
               f"You are Claude, design owner. Read {shared}/DESIGN_REVIEW.md (independent "
               f"critique by Codex) and {shared}/UX_DESIGN.md. Update UX_DESIGN.md to address "
               "P0 issues, resolve missing states and platform inconsistencies, and clearly "
               "document any disagreements with the reviewer as explicit design decisions. "
-              "Do not implement native app code. Commit revised design.")
+              "Do not implement native app code. Do NOT commit or push.")
         for platform in ("ios", "android"):
             # Import shared design into both independent native implementation branches.
             git("merge", "--no-edit", f"concept/{slug}/design", cwd=root / platform)
@@ -259,7 +322,7 @@ def run_pipeline(slug):
                             f"Read {shared}/{plat}/CLAUDE_REVIEW.md (Claude's independent code review), "
                             f"and {shared}/UX_DESIGN.md (Claude design). Resolve P0/P1 issues "
                             "within your platform only; critically check UX against the design, "
-                            "rebuild and run relevant tests, document remaining gaps, commit fixes. "
+                            "rebuild and run relevant tests, document remaining gaps, but do NOT commit or push. "
                             "Do not alter the other platform, publish or merge."): plat
                 for plat in ("ios", "android")
             }
@@ -277,7 +340,10 @@ def run_pipeline(slug):
         print(f"[{slug}] COMPLETE. Review and publish draft PRs manually.", flush=True)
         return 0
     except Exception as error:
-        update(slug, phase="failed", error=str(error)[-1200:])
+        failed_step = get_jobs()[slug].get("phase", "unknown")
+        if failed_step in dict(PHASES):
+            (STATE / "logs" / slug / f"{failed_step}.exit").write_text("1")
+        update(slug, phase="failed", failed_step=failed_step, error=str(error)[-1200:])
         (STATE / "logs" / slug / "pipeline.exit").write_text("1")
         print(f"[{slug}] FAILED safely: {error}", flush=True)
         return 1

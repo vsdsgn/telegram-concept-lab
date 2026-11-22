@@ -41,6 +41,8 @@ def doctor():
         "adb": Path.home() / "Library/Android/sdk/platform-tools/adb",
         "emulator": Path.home() / "Library/Android/sdk/emulator/emulator",
         "Android Studio": Path("/Applications/Android Studio.app"),
+        "JDK 17": Path("/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/java"),
+        "isolated Codex": Path.home() / ".local/share/telegram-concept-lab/codex-home/config.toml",
     }.items():
         print(f"{name:12} {'OK' if p.exists() else 'MISSING'}")
 
