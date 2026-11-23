@@ -80,3 +80,17 @@ Full project completion requires independent Xcode simulator compilation and off
 - System-wide JDK 25 is incompatible with Gradle 8.14. Android builds use Homebrew JDK 17, scoped to Android jobs.
 - Orchestrator commits only model-assigned content, then creates draft PRs only on explicit request.
 - Paperclip agents remain paused due unsafe default adapter invocation. Use the Desktop launcher for live runs.
+
+## Native source workflow (real Telegram, not mocks)
+
+The SwiftUI launcher now has a dedicated native Telegram iOS + Android creation action.
+
+- CLI: python3 native.py doctor | python3 native.py new my-native-idea "interaction request" | python3 native.py status.
+- Native concepts fork local concept-lab/reaction-wheel feature branches into isolated Git worktrees. Original branches stay intact. Existing Reaction Wheel patches are part of the base.
+- UX specs and logs remain private under ignored .lab/native/<slug>; no upstream pushes, merges or publications.
+- Claude designs/reviews both clients, Codex critiques UX and writes/fixes both genuine native codebases. No standalone mocks in this path.
+- Protected auth, signing and Test DC source edits halt the workflow. This path-based safeguard is not a formal security audit.
+- Phase ready-for-build-review is NOT a passing Bazel/Gradle build, and NOT in-chat gesture E2E. Test accounts, real messages and actual animations need subsequent verification.
+- Native jobs and log folders appear in the macOS application. Legacy standalone jobs remain separate.
+
+The brand-new full live native Claude + Codex run has not yet been end-to-end validated. Do not use production Telegram credentials.

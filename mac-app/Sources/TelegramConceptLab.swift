@@ -86,10 +86,19 @@ private struct LabJob: Identifiable {
 private final class LabStore: ObservableObject {
     @Published var jobs: [LabJob] = []
     @Published var busy = false
+    @Published var nativeRuns: [(slug: String, phase: String)] = []
     @Published var lastResult = ""
     @Published var lastError = ""
 
     func refresh() {
+        let nativeFile = LabPaths.state.appendingPathComponent("native/jobs.json")
+        if let data = try? Data(contentsOf: nativeFile),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] {
+            nativeRuns = json.map { (slug: $0.key, phase: $0.value["phase"] as? String ?? "unknown") }
+                .sorted { $0.slug > $1.slug }
+        } else {
+            nativeRuns = []
+        }
         guard let data = try? Data(contentsOf: LabPaths.jobs),
               let obj = try? JSONSerialization.jsonObject(with: data),
               let records = obj as? [String: [String: Any]] else {
@@ -137,6 +146,43 @@ private final class LabStore: ObservableObject {
         execute(["new", slug, prompt, "--demo"]) { success in
             if success { done(slug) }
         }
+    }
+
+    func launchNative(prompt: String) {
+        guard !busy else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let slug = "native-" + formatter.string(from: Date()) + "-" + String(UUID().uuidString.prefix(4)).lowercased()
+        busy = true
+        lastResult = "Готовлю изолированные рабочие деревья официального Telegram…"
+        lastError = ""
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["python3", "native.py", "new", slug, prompt]
+        process.currentDirectoryURL = LabPaths.root
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = [
+            FileManager.default.homeDirectoryForCurrentUser.path + "/.local/bin",
+            "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"
+        ].joined(separator: ":")
+        process.environment = environment
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        process.terminationHandler = { [weak self] finished in
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            let message = String(data: data, encoding: .utf8) ?? ""
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.busy = false
+                self.lastResult = message.isEmpty ? slug : message
+                if finished.terminationStatus != 0 {
+                    self.lastError = "Native-пайплайн не запущен: " + String(message.suffix(1200))
+                }
+            }
+        }
+        do { try process.run() }
+        catch { busy = false; lastError = error.localizedDescription }
     }
 
     func resume(slug: String) {
@@ -481,9 +527,9 @@ private struct ContentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Отдельное демо — НЕ Telegram")
+                    Text("Новый концепт Telegram")
                         .font(.system(size: 29, weight: .bold))
-                    Text("Этот режим создаёт standalone-мок с вымышленными сообщениями. Разработка настоящих клиентов показана в разделе «Официальные исходники Telegram» слева.")
+                    Text("По умолчанию разрабатываем внутри реальных клиентов Telegram с изолированным Test DC. Standalone-мок — отдельная опция ниже.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -507,6 +553,41 @@ private struct ContentView: View {
                         .accessibilityLabel("Описание концепта")
                 }
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Настоящий Telegram · тестовые сборки").font(.headline)
+                    Text("Claude проектирует оба клиента, Codex пишет код в изолированных ветках оригинальных iOS/Android. Код и идея остаются локальными. Тесты на реальных сообщениях и финальная сборка требуют отдельной проверки.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    Button {
+                        store.launchNative(prompt: idea)
+                    } label: {
+                        Label("Разработать внутри Telegram iOS + Android", systemImage: "hammer.fill")
+                            .fontWeight(.semibold)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(store.busy || idea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(16)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+
+                if !store.nativeRuns.isEmpty {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("Нативные запуски").font(.headline)
+                        ForEach(store.nativeRuns, id: \.slug) { run in
+                            HStack {
+                                Text(run.slug).font(.system(.caption, design: .monospaced))
+                                Spacer()
+                                Text(run.phase).font(.caption).foregroundStyle(.secondary)
+                                Button("Логи") {
+                                    let folder = LabPaths.state.appendingPathComponent("native/" + run.slug)
+                                    NSWorkspace.shared.open(folder)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+                Text("Отдельный standalone-мок (опционально)").font(.headline)
                 Toggle(isOn: $publicAgreed) {
                     Text("Понимаю, что текст идеи и код будут опубликованы в публичном GitHub.")
                         .font(.callout)
