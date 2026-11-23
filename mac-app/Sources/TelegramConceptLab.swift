@@ -411,6 +411,17 @@ private struct ContentView: View {
                                     simctl.arguments = ["simctl", "launch", "F6A284E2-B69E-466B-9C29-00C8D9B2DAD0", "ph.telegra.Telegraph"]
                                     try? simctl.run()
                                 }
+                                Button("Открыть экран iPhone") {
+                                    let viewer = Process()
+                                    viewer.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                                    viewer.arguments = [
+                                        "-a",
+                                        FileManager.default.homeDirectoryForCurrentUser
+                                            .appendingPathComponent("Applications/OpenDeviceHub.app").path,
+                                        "devices://device/open?id=F6A284E2-B69E-466B-9C29-00C8D9B2DAD0"
+                                    ]
+                                    try? viewer.run()
+                                }
                                 Button("Открыть скриншот") {
                                     let image = FileManager.default.homeDirectoryForCurrentUser
                                         .appendingPathComponent("Projects/telegram-integrations/ios-fresh-test-dc-screen.png")
@@ -420,7 +431,7 @@ private struct ContentView: View {
                                     NSWorkspace.shared.activateFileViewerSelecting([directory.appendingPathComponent("bazel-bin/Telegram/Telegram.ipa")])
                                 }
                             }
-                            Text("iPhone 17 / iOS 26.1 · постоянное отдельное хранилище Test DC. Графического Simulator.app в Xcode нет; тест жеста в реальном чате ещё не выполнен.")
+                            Text("iPhone 17 / iOS 26.1 · постоянное отдельное хранилище Test DC. Экран iPhone открывается через OpenDeviceHub; тест жеста в реальном чате ещё не выполнен.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if platform == "android" {
