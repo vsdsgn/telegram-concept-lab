@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Reaction Wheel</string><string name="settings">Demo settings</string>
+    <string name="demo_banner">Demo data — not connected to Telegram</string>
+    <string name="hint">Hold a message, slide to a reaction, then release.</string>
+    <string name="choose">Choose a reaction</string><string name="slide_choose">Slide to choose</string>
+    <string name="release_cancel">Release to cancel</string><string name="close">Close</string>
+    <string name="react">React…</string><string name="remove_reaction">Remove reaction</string>
+    <string name="reaction_wheel">Reaction wheel. 6 options.</string>
+    <string name="theme">Dark appearance</string><string name="reduce_motion">Reduce motion</string>
+    <string name="haptics">Haptics</string><string name="debug">Show geometry</string><string name="reset">Reset reactions</string>
+    <string name="mock_label">Mock conversation</string>
+    <string name="reacted_with">Reacted with %1$s</string><string name="reaction_changed_to">Reaction changed to %1$s</string><string name="reaction_removed">Reaction removed</string>
+    <string name="your_reaction">Your reaction: %1$s</string><string name="no_reaction">No reaction</string>
+    <string name="message_description">%1$s, message, %2$s, %3$s. %4$s</string><string name="remove_named_reaction">Remove %1$s reaction</string><string name="remove_named">Remove %1$s</string>
+    <string name="reset_confirm">Remove all demo reactions?</string>
+    <string name="compact_description">%1$s, %2$d of 6</string><string name="compact_selected_description">%1$s, %2$d of 6, selected. Remove %1$s reaction</string>
+</resources>

@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Колесо реакций</string><string name="settings">Настройки демо</string>
+    <string name="demo_banner">Демо-данные — без подключения к Telegram</string>
+    <string name="hint">Удерживайте сообщение, проведите к реакции и отпустите.</string>
+    <string name="choose">Выберите реакцию</string><string name="slide_choose">Проведите, чтобы выбрать</string>
+    <string name="release_cancel">Отпустите для отмены</string><string name="close">Закрыть</string>
+    <string name="react">Реагировать…</string><string name="remove_reaction">Убрать реакцию</string>
+    <string name="reaction_wheel">Колесо реакций. 6 вариантов.</string>
+    <string name="theme">Тёмное оформление</string><string name="reduce_motion">Уменьшение движения</string>
+    <string name="haptics">Виброотклик</string><string name="debug">Показать геометрию</string><string name="reset">Сбросить реакции</string>
+    <string name="mock_label">Демонстрационный чат</string>
+    <string name="reacted_with">Добавлена реакция: %1$s</string><string name="reaction_changed_to">Реакция изменена на %1$s</string><string name="reaction_removed">Реакция убрана</string>
+    <string name="your_reaction">Ваша реакция: %1$s</string><string name="no_reaction">Нет реакции</string>
+    <string name="message_description">%1$s, сообщение, %2$s, %3$s. %4$s</string><string name="remove_named_reaction">Убрать реакцию %1$s</string><string name="remove_named">Убрать %1$s</string>
+    <string name="reset_confirm">Убрать все демо-реакции?</string>
+    <string name="compact_description">%1$s, %2$d из 6</string><string name="compact_selected_description">%1$s, %2$d из 6, выбрано. Убрать реакцию %1$s</string>
+</resources>
